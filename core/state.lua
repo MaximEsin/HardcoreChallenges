@@ -1,7 +1,6 @@
-HardcoreChallenges = LibStub("AceAddon-3.0"):NewAddon(
-    "HardcoreChallenges",
-    "AceEvent-3.0",
-    "AceConsole-3.0"
-)
+-- core/state.lua
+-- Тут можно держать функции работы с состоянием персонажа
+-- Без создания нового аддона
 
-HardcoreChallenges.UI = {}
+local addon = HardcoreChallenges
+addon.UI = addon.UI or {}

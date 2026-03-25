@@ -18,11 +18,11 @@ libs\LibDBIcon-1.0\LibDataBroker-1.1\LibDataBroker-1.1.lua
 libs\LibDBIcon-1.0\LibDBIcon-1.0\LibDBIcon-1.0.lua
 
 # ===== CORE =====
-core\state.lua
+core\init.lua
 db.lua
 core\challenges.lua
 core\events.lua
-core\init.lua
+core\state.lua
 
 # ===== UI =====
 ui\active_challenges.lua

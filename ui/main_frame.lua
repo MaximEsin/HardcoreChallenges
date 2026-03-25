@@ -1,3 +1,4 @@
+-- ui/main_frame.lua
 local addon = HardcoreChallenges
 local UI = addon.UI
 local AceGUI = LibStub("AceGUI-3.0")
@@ -34,7 +35,9 @@ function UI:ShowSelection()
         cb:SetWidth(300)
 
         cb:SetCallback("OnValueChanged", function(_, _, val)
-            db.activeChallenges[key] = val
+            if not db.characterStarted then
+                db.activeChallenges[key] = val
+            end
         end)
 
         container:AddChild(cb)
@@ -44,7 +47,6 @@ function UI:ShowSelection()
     local btn = AceGUI:Create("Button")
     btn:SetText("Start")
     btn:SetWidth(120)
-
     btn:SetCallback("OnClick", function()
         db.characterStarted = true
         window:Hide()
@@ -52,6 +54,5 @@ function UI:ShowSelection()
     end)
 
     window:AddChild(btn)
-
     self.selectionWindow = window
 end

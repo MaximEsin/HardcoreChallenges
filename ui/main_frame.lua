@@ -1,3 +1,4 @@
+-- ui/main_frame.lua
 local addon = HardcoreChallenges
 local UI = addon.UI
 local AceGUI = LibStub("AceGUI-3.0")

@@ -15,6 +15,13 @@ addon.Challenges = {
         enabledByDefault = false,
         points = 10,
     },
+    ["SelfFound"] = {
+    name = "Self Found",
+    description = "Have self found buff active until lvl 60",
+    icon = "Interface\\Icons\\ui_selffound",
+    enabledByDefault = false,
+    points = 10,
+},
 }
 
 function addon:GetChallengesState()

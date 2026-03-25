@@ -85,10 +85,29 @@ function UI:ShowSelection()
     btn:SetText("Start")
     btn:SetWidth(120)
     btn:SetCallback("OnClick", function()
-        db.characterStarted = true
-        window:Hide()
-        UI:ShowActive()
-    end)
+    -- ✅ Проверка Self Found при старте
+    if db.activeChallenges["SelfFound"] then
+        local hasBuff = false
+
+        for i = 1, 40 do
+            local name = UnitBuff("player", i)
+            if not name then break end
+
+            if name == "Self-Found Adventurer" then
+                hasBuff = true
+                break
+            end
+        end
+
+        if not hasBuff then
+            db.failedChallenges["SelfFound"] = true
+        end
+    end
+
+    db.characterStarted = true
+    window:Hide()
+    UI:ShowActive()
+end)
 
     window:AddChild(btn)
 

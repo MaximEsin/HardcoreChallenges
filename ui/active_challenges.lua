@@ -47,8 +47,8 @@ function UI:UpdateActive()
             icon:SetImageSize(36, 36)
             icon:SetWidth(40)
 
-            -- ✅ отключаем любые mouse interaction (убирает странные эффекты)
-            icon.image:EnableMouse(false)
+            -- ✅ УБИРАЕМ hover НАВСЕГДА
+            icon.frame:Disable()
 
             local status = db.failedChallenges[key] and "|cFFFF0000Failed|r" or "|cFF00FF00Active|r"
 

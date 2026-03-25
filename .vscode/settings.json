@@ -6,7 +6,8 @@
         "UIErrorsFrame",
         "CloseBankFrame",
         "UnitName",
-        "GameFontNormalLarge"
+        "GameFontNormalLarge",
+        "UnitBuff"
     ],
     "cSpell.words": [
         "geterrorhandler"

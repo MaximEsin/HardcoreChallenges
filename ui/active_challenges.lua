@@ -1,11 +1,8 @@
--- ui/active_challenges.lua
 local addon = HardcoreChallenges
 local UI = addon.UI
 local AceGUI = LibStub("AceGUI-3.0")
 
--- Показ окна активных челленджей
 function UI:ShowActive()
-    -- если уже есть окно — просто обновим
     if self.activeWindow then
         self:UpdateActive()
         self.activeWindow:Show()
@@ -14,12 +11,11 @@ function UI:ShowActive()
 
     local window = AceGUI:Create("Window")
     window:SetTitle("Active Challenges")
-    window:SetLayout("List")
-    window:SetWidth(400)
-    window:SetHeight(400)
+    window:SetLayout("Flow")
+    window:SetWidth(420)
+    window:SetHeight(450)
     window:EnableResize(false)
 
-    -- Чёрный фон под контент
     local bg = CreateFrame("Frame", nil, window.frame)
     bg:SetPoint("TOPLEFT", 10, -25)
     bg:SetPoint("BOTTOMRIGHT", -4, 4)
@@ -32,7 +28,6 @@ function UI:ShowActive()
     self:UpdateActive()
 end
 
--- Обновление списка активных челленджей
 function UI:UpdateActive()
     local db = addon.CharDB
     local window = self.activeWindow
@@ -44,22 +39,45 @@ function UI:UpdateActive()
         if db.activeChallenges[key] then
             local container = AceGUI:Create("SimpleGroup")
             container:SetLayout("Flow")
-            container:SetWidth(360)
-            container:SetHeight(40)
+            container:SetFullWidth(true)
+            container:SetHeight(60)
 
             local icon = AceGUI:Create("Icon")
             icon:SetImage(challenge.icon)
-            icon:SetImageSize(32, 32)
-            container:AddChild(icon)
+            icon:SetImageSize(36, 36)
+            icon:SetWidth(40)
+
+            -- ✅ отключаем любые mouse interaction (убирает странные эффекты)
+            icon.image:EnableMouse(false)
 
             local status = db.failedChallenges[key] and "|cFFFF0000Failed|r" or "|cFF00FF00Active|r"
 
-            local lbl = AceGUI:Create("Label")
-            lbl:SetText(challenge.name .. " - " .. challenge.description .. " [" .. status .. "]")
-            lbl:SetWidth(300)
+            local title = "|cFFFF0000" .. challenge.name .. "|r"
+            local desc = challenge.description
+            local pts = "|cFFFFFF00+" .. challenge.points .. " points|r"
 
-            container:AddChild(lbl)
+            local text = AceGUI:Create("Label")
+            text:SetText(title .. "\n" .. desc .. "\n" .. pts .. " [" .. status .. "]")
+            text:SetWidth(320)
+
+            container:AddChild(icon)
+            container:AddChild(text)
+
             window:AddChild(container)
         end
     end
+
+    local spacer = AceGUI:Create("Label")
+    spacer:SetText(" ")
+    spacer:SetFullWidth(true)
+    window:AddChild(spacer)
+
+    local points = addon:GetPoints()
+
+    local pointsLabel = AceGUI:Create("Label")
+    pointsLabel:SetText("|cFFFFFF00Total Points: " .. points .. "|r")
+    pointsLabel:SetFullWidth(true)
+    pointsLabel:SetFontObject(GameFontNormalLarge)
+
+    window:AddChild(pointsLabel)
 end

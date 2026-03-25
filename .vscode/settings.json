@@ -5,7 +5,8 @@
         "GetRealmName",
         "UIErrorsFrame",
         "CloseBankFrame",
-        "UnitName"
+        "UnitName",
+        "GameFontNormalLarge"
     ],
     "cSpell.words": [
         "geterrorhandler"

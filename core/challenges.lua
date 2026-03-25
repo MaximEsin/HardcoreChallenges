@@ -1,4 +1,3 @@
--- core/challenges.lua
 local addon = HardcoreChallenges
 
 addon.Challenges = {
@@ -7,12 +6,14 @@ addon.Challenges = {
         description = "Death = delete. If the player dies, they must not resurrect and delete the character.",
         icon = "Interface\\Icons\\ability_creature_cursed_02",
         enabledByDefault = true,
+        points = 10,
     },
     ["NoBank"] = {
         name = "No Bank",
         description = "The player cannot use the bank. Any item remains in the inventory.",
         icon = "Interface\\Icons\\INV_Misc_Coin_01",
         enabledByDefault = false,
+        points = 10,
     },
 }
 
@@ -25,12 +26,15 @@ function addon:GetChallengesState()
         if db.activeChallenges[key] == nil then
             db.activeChallenges[key] = challenge.enabledByDefault
         end
+
         result[key] = {
             name = challenge.name,
             description = challenge.description,
             icon = challenge.icon,
             enabled = db.activeChallenges[key],
+            points = challenge.points or 0,
         }
     end
+
     return result
 end

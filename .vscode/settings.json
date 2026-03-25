@@ -1,0 +1,16 @@
+{
+    "Lua.diagnostics.globals": [
+        "LibStub",
+        "CreateFrame",
+        "GetRealmName",
+        "UIErrorsFrame",
+        "CloseBankFrame",
+        "UnitName"
+    ],
+    "cSpell.words": [
+        "geterrorhandler"
+    ],
+    "Lua.diagnostics.disable": [
+        "duplicate-set-field"
+    ]
+}

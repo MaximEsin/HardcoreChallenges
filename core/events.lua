@@ -1,20 +1,28 @@
-HardcoreChallenges:RegisterEvent("PLAYER_DEAD", function()
-    local db = HardcoreChallenges.CharDB
+local addon = HardcoreChallenges
+
+function addon:OnEnable()
+    self:RegisterEvent("PLAYER_DEAD")
+    self:RegisterEvent("BANKFRAME_OPENED")
+end
+
+function addon:PLAYER_DEAD()
+    local db = self.CharDB
+
     if db.activeChallenges["Hardcore"] then
-        print("HardcoreChallenges: Hardcore failed!")
         db.failedChallenges["Hardcore"] = true
-        if HardcoreChallengesActiveUI then
-            HardcoreChallengesActiveUI:Update()
-            HardcoreChallengesActiveUI:Show()
+
+        if self.UI and self.UI.activeWindow then
+            self.UI:UpdateActive()
+            self.UI.activeWindow:Show()
         end
     end
-end)
+end
 
-HardcoreChallenges:RegisterEvent("BANKFRAME_OPENED", function()
-    local db = HardcoreChallenges.CharDB
+function addon:BANKFRAME_OPENED()
+    local db = self.CharDB
+
     if db.activeChallenges["NoBank"] then
-        print("HardcoreChallenges: No Bank active — closing bank!")
         CloseBankFrame()
         UIErrorsFrame:AddMessage("No Bank challenge active!", 1, 0, 0)
     end
-end)
+end

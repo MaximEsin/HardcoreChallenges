@@ -1,48 +1,41 @@
-local addon = HardcoreChallenges
+-- db.lua
 
-function addon:Init()
-    if self.state.initialized then
-        print("HardcoreChallenges: Already initialized")
-        return
-    end
+print("HardcoreChallenges: Loading DB...")
 
-    print("HardcoreChallenges: Initializing...")
-    self.state.initialized = true
+-- Глобальная база
+HardcoreChallengesDB = HardcoreChallengesDB or {}
 
-    -- Проверяем DB
-    if not HardcoreChallengesDB then
-        print("Warning: HardcoreChallengesDB is nil!")
-    else
-        print("HardcoreChallengesDB OK")
-    end
-
-    -- Регистрируем событие
-    self:RegisterEvent("PLAYER_LOGIN", function()
-        addon:OnPlayerLogin()
-    end)
-
-    print("HardcoreChallenges: Init done")
+-- Получение уникального идентификатора персонажа
+local function GetCharKey()
+    return UnitName("player").." - "..GetRealmName()
 end
 
-function addon:OnPlayerLogin()
-    print("HardcoreChallenges: PLAYER_LOGIN triggered")
-    self.state.playerLoaded = true
+-- Инициализация данных для персонажа
+local charKey = GetCharKey()
+HardcoreChallengesDB[charKey] = HardcoreChallengesDB[charKey] or {}
 
-    if not HardcoreChallengesDB.characterStarted then
-        print("HardcoreChallenges: First launch detected")
-        self:ShowFirstLaunchUI()
-    else
-        print("HardcoreChallenges: Character already started")
+local charDB = HardcoreChallengesDB[charKey]
+
+-- Дефолты для персонажа
+local defaults = {
+    characterStarted = false,
+    activeChallenges = {},
+    failedChallenges = {},
+    minimap = { angle = 0 },
+}
+
+-- Функция применения дефолтов
+local function ApplyDefaults(db, defaultsTable)
+    for key, value in pairs(defaultsTable) do
+        if db[key] == nil then
+            db[key] = value
+        end
     end
 end
 
-function addon:ShowFirstLaunchUI()
-    if HardcoreChallengesUI then
-        print("HardcoreChallenges: Showing main UI")
-        HardcoreChallengesUI:Show()
-    else
-        print("HardcoreChallenges: HardcoreChallengesUI is nil!")
-    end
-end
+ApplyDefaults(charDB, defaults)
 
-addon:Init()
+-- Возвращаем для удобства
+HardcoreChallenges.CharDB = charDB
+
+print("HardcoreChallenges: DB loaded for", charKey)

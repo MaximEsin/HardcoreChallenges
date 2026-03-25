@@ -1,30 +1,20 @@
--- core/events.lua
-
--- Создаем основной frame для подписки на события
-local eventFrame = CreateFrame("Frame")
-
--- Таблица обработчиков (event -> function)
-HardcoreChallenges.events = {}
-
--- Универсальная функция регистрации событий
-function HardcoreChallenges:RegisterEvent(event, handler)
-    -- Регистрируем событие в WoW
-    eventFrame:RegisterEvent(event)
-
-    -- Сохраняем обработчик
-    HardcoreChallenges.events[event] = handler
-end
-
--- Главный dispatcher событий
-eventFrame:SetScript("OnEvent", function(_, event, ...)
-    -- Проверяем есть ли обработчик
-    local handler = HardcoreChallenges.events[event]
-
-    if handler then
-        handler(...)
+HardcoreChallenges:RegisterEvent("PLAYER_DEAD", function()
+    local db = HardcoreChallenges.CharDB
+    if db.activeChallenges["Hardcore"] then
+        print("HardcoreChallenges: Hardcore failed!")
+        db.failedChallenges["Hardcore"] = true
+        if HardcoreChallengesActiveUI then
+            HardcoreChallengesActiveUI:Update()
+            HardcoreChallengesActiveUI:Show()
+        end
     end
 end)
 
--- 💡 Позже ты можешь расширить это:
--- - несколько обработчиков на событие
--- - middleware система
+HardcoreChallenges:RegisterEvent("BANKFRAME_OPENED", function()
+    local db = HardcoreChallenges.CharDB
+    if db.activeChallenges["NoBank"] then
+        print("HardcoreChallenges: No Bank active — closing bank!")
+        CloseBankFrame()
+        UIErrorsFrame:AddMessage("No Bank challenge active!", 1, 0, 0)
+    end
+end)

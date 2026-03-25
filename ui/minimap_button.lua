@@ -1,32 +1,52 @@
 -- ui/minimap_button.lua
 
-print("HardcoreChallenges: Loading Minimap Button...")
+local addon = HardcoreChallenges
+local UI = addon.UI
 
--- Гарантируем, что DB есть
-if not HardcoreChallengesDB then
-    print("HardcoreChallenges: HardcoreChallengesDB is nil! Creating default table...")
-    HardcoreChallengesDB = {}
-end
-HardcoreChallengesDB.minimap = HardcoreChallengesDB.minimap or {}
+local LDB = LibStub("LibDataBroker-1.1")
+local LDBIcon = LibStub("LibDBIcon-1.0")
 
--- LibDBIcon
-local LDB = LibStub("LibDBIcon-1.0")
-local LDBDataObject = LibStub("LibDataBroker-1.1"):NewDataObject("HardcoreChallenges", {
+print("HardcoreChallenges: Loading minimap button")
+
+local icon = LDB:NewDataObject("HardcoreChallenges", {
     type = "data source",
     icon = "Interface\\Icons\\ability_creature_cursed_02",
     text = "Hardcore Challenges",
+
     OnClick = function(self, button)
-        print("HardcoreChallenges: Minimap button clicked")
-        if HardcoreChallengesUI then
-            HardcoreChallengesUI:Show()
+        print("Minimap clicked")
+
+        local db = addon.CharDB
+
+        if not db then
+            print("ERROR: CharDB missing")
+            return
+        end
+
+        -- Проверяем выбран ли хоть один челлендж
+        local anySelected = false
+        for _, v in pairs(db.activeChallenges) do
+            if v then
+                anySelected = true
+                break
+            end
+        end
+
+        -- Открываем нужное окно
+        if not anySelected then
+            print("Opening Selection UI")
+            UI:ShowSelection()
+        else
+            print("Opening Active UI")
+            UI:ShowActive()
         end
     end,
+
     OnTooltipShow = function(tt)
         tt:AddLine("Hardcore Challenges")
-        tt:AddLine("Click to open Challenge Selection", 1,1,1)
+        tt:AddLine("Click to open", 1,1,1)
     end,
 })
 
-LDB:Register("HardcoreChallenges", LDBDataObject, HardcoreChallengesDB.minimap)
-
-print("HardcoreChallenges: Minimap Button loaded")
+-- Регистрируем кнопку
+LDBIcon:Register("HardcoreChallenges", icon, addon.CharDB.minimap)

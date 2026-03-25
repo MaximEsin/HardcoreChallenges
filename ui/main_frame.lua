@@ -1,33 +1,71 @@
-HardcoreChallengesUI = {}
+-- ui/main_frame.lua
 
-local frame = CreateFrame("Frame", "HardcoreChallengesMainFrame", UIParent, "BackdropTemplate")
-frame:SetSize(400, 300)
-frame:SetPoint("CENTER")
-frame:SetBackdrop({ bgFile = "Interface/Tooltips/UI-Tooltip-Background" })
-frame:SetBackdropColor(0, 0, 0, 0.8)
-frame:Hide()
+local addon = HardcoreChallenges
+local UI = addon.UI
+local AceGUI = LibStub("AceGUI-3.0")
 
-local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-title:SetPoint("TOP", 0, -20)
-title:SetText("Challenge Selection")
+-- Окно выбора челленджей
+function UI:ShowSelection()
+    print("UI: ShowSelection")
 
-local startButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-startButton:SetSize(120, 30)
-startButton:SetPoint("BOTTOM", 0, 20)
-startButton:SetText("Start")
+    local db = addon.CharDB
 
-startButton:SetScript("OnClick", function()
-    print("HardcoreChallenges: Start clicked")
-    HardcoreChallengesDB.characterStarted = true
-    frame:Hide()
-end)
+    -- если окно уже есть — просто показать
+    if self.selectionWindow then
+        self.selectionWindow:Show()
+        return
+    end
 
-function HardcoreChallengesUI:Show()
-    print("HardcoreChallengesUI: Show")
-    frame:Show()
-end
+    local window = AceGUI:Create("Window")
+    window:SetTitle("Select Challenges")
+    window:SetLayout("Flow")
+    window:SetWidth(400)
+    window:SetHeight(400)
+    window:EnableResize(false)
 
-function HardcoreChallengesUI:Hide()
-    print("HardcoreChallengesUI: Hide")
-    frame:Hide()
+    -- создаем чекбоксы
+    for key, challenge in pairs(addon:GetChallengesState()) do
+        local container = AceGUI:Create("SimpleGroup")
+        container:SetLayout("Flow")
+        container:SetWidth(360)
+        container:SetHeight(40)
+
+        -- иконка
+        local icon = AceGUI:Create("Icon")
+        icon:SetImage(challenge.icon)
+        icon:SetImageSize(32, 32)
+        container:AddChild(icon)
+
+        -- чекбокс
+        local cb = AceGUI:Create("CheckBox")
+        cb:SetLabel(challenge.name .. " - " .. challenge.description)
+        cb:SetValue(challenge.enabled)
+        cb:SetWidth(300)
+
+        cb:SetCallback("OnValueChanged", function(_, _, val)
+            db.activeChallenges[key] = val
+            print("Challenge toggled:", key, val)
+        end)
+
+        container:AddChild(cb)
+        window:AddChild(container)
+    end
+
+    -- кнопка Start
+    local btn = AceGUI:Create("Button")
+    btn:SetText("Start")
+    btn:SetWidth(120)
+
+    btn:SetCallback("OnClick", function()
+        print("Start button clicked")
+
+        db.characterStarted = true
+
+        window:Hide()
+        UI:ShowActive()
+    end)
+
+    window:AddChild(btn)
+
+    self.selectionWindow = window
 end

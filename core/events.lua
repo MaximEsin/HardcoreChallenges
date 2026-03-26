@@ -61,6 +61,47 @@ addon:RegisterEvent("BANKFRAME_OPENED", function()
 end)
 
 -- =========================
+-- ✉️ NO MAIL
+-- =========================
+addon:RegisterEvent("MAIL_SHOW", function()
+    local db = addon.CharDB
+    if db.activeChallenges["NoMail"] then
+        CloseMail()
+        UIErrorsFrame:AddMessage("No Mail challenge active!", 1, 0, 0)
+    end
+end)
+
+-- =========================
+-- 🏷️ NO AUCTION HOUSE
+-- =========================
+--[[
+    AUCTION_HOUSE_SHOW часто приходит до того, как окно реально показано
+    (или до появления AuctionFrame при ленивой загрузке UI), поэтому один
+    вызов CloseAuctionHouse() не закрывает при первом открытии — закрываем
+    на следующих тиках и дублируем через HideUIPanel, если кадр всё ещё виден.
+]]
+local function CloseAuctionHouseForChallenge()
+    local db = addon.CharDB
+    if not db.activeChallenges["NoAuctionHouse"] then return end
+    CloseAuctionHouse()
+    local af = _G.AuctionFrame
+    if af and af:IsShown() and HideUIPanel then
+        HideUIPanel(af)
+    end
+end
+
+addon:RegisterEvent("AUCTION_HOUSE_SHOW", function()
+    local db = addon.CharDB
+    if not db.activeChallenges["NoAuctionHouse"] then return end
+    UIErrorsFrame:AddMessage("No Auction House challenge active!", 1, 0, 0)
+    CloseAuctionHouseForChallenge()
+    if C_Timer and C_Timer.After then
+        C_Timer.After(0, CloseAuctionHouseForChallenge)
+        C_Timer.After(0.05, CloseAuctionHouseForChallenge)
+    end
+end)
+
+-- =========================
 -- 🔥 SELF FOUND
 -- =========================
 local function CheckSelfFound()

@@ -27,6 +27,20 @@ addon.Challenges = {
         enabledByDefault = false,
         points = 10,
     },
+    ["NoMail"] = {
+        name = "No Mail",
+        description = "The player cannot use mailboxes or the mail interface.",
+        icon = "Interface\\Icons\\INV_Letter_15",
+        enabledByDefault = false,
+        points = 10,
+    },
+    ["NoAuctionHouse"] = {
+        name = "No Auction House",
+        description = "The player cannot use the auction house.",
+        icon = "Interface\\Icons\\INV_Misc_Coin_02",
+        enabledByDefault = false,
+        points = 10,
+    },
     ["SelfFound"] = {
         name = "Self Found",
         description = "Have self found buff active until lvl 60",

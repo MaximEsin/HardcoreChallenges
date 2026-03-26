@@ -28,6 +28,9 @@ function addon:InitDB()
         failedChallenges = {},
         minimap = { hide = false, angle = 0 },
         startContinent = nil,
+        craftedDuoPartner = "",
+        craftedAllowedKeys = {},
+        partnerGiftedKeys = {},
     }
 
     self.DB = LibStub("AceDB-3.0"):New("HardcoreChallengesDB", { profile = defaults }, false)
@@ -43,6 +46,9 @@ end
 function addon:OnInitialize()
     self:InitDB()
     self:RegisterChatCommand("hc", "HandleSlash")
+    if self.CraftedLockOnInitialize then
+        self:CraftedLockOnInitialize()
+    end
 end
 
 --[[ 
@@ -65,16 +71,21 @@ function addon:ResetCharacter()
     db.characterStarted = false
     db.activeChallenges = {}
     db.failedChallenges = {}
+    db.craftedDuoPartner = ""
+    db.craftedAllowedKeys = {}
+    db.partnerGiftedKeys = {}
 
     print("|cFFFF0000[Hardcore Challenges]|r Character data reset!")
 
     if self.UI.selectionWindow then
-        self.UI.selectionWindow:Release()
+        self.UI.selectionWindow:Hide()
+        self.UI.selectionWindow:SetParent(nil)
         self.UI.selectionWindow = nil
     end
 
     if self.UI.activeWindow then
-        self.UI.activeWindow:Release()
+        self.UI.activeWindow:Hide()
+        self.UI.activeWindow:SetParent(nil)
         self.UI.activeWindow = nil
     end
 end
@@ -84,6 +95,10 @@ end
     - показывает окно активных челленджей, если персонаж уже стартовал
 ]]
 function addon:OnEnable()
+    if self.CraftedLockOnEnable then
+        self:CraftedLockOnEnable()
+    end
+
     if self.CharDB.characterStarted then
         self.UI:ShowActive()
     end

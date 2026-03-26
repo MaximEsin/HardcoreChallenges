@@ -2,12 +2,7 @@
 
 local addon = HardcoreChallenges
 local UI = addon.UI
-local AceGUI = LibStub("AceGUI-3.0")
 
---[[ 
-    Функция: Получение текущего континента игрока
-    Используется для проверки челленджа SingleContinent
-]]
 local function GetCurrentContinent()
     local mapID = C_Map.GetBestMapForUnit("player")
     if not mapID then return nil end
@@ -18,120 +13,135 @@ local function GetCurrentContinent()
     return info.parentMapID or mapID
 end
 
---[[ 
-    Функция: Показ активных челленджей
-    - Если окно уже существует, обновляет и показывает его
-    - Создаёт GUI окно с фоном и списком активных челленджей
-]]
 function UI:ShowActive()
     if self.activeWindow then
         self:UpdateActive()
         self.activeWindow:Show()
+        self.activeWindow:RefreshTheme()
         return
     end
 
     local frameName = "HardcoreChallenges_ActiveFrame"
+    local root = self:CreateThemedWindow({
+        name = frameName,
+        title = "Active Challenges",
+        width = 468,
+        height = 480,
+    })
 
-    local window = AceGUI:Create("Window")
-    window:SetTitle("Active Challenges")
-    window:SetLayout("Flow")
-    window:SetWidth(420)
-    window:SetHeight(450)
-    window:EnableResize(false)
-    window.frame:SetParent(UIParent)
-    window.frame:SetFrameStrata("DIALOG")
-    window.frame:SetClampedToScreen(true)
-
-    _G[frameName] = window.frame
+    _G[frameName] = root
     tinsert(UISpecialFrames, frameName)
 
-    -- черный фон
-    local bg = CreateFrame("Frame", nil, window.frame)
-    bg:SetPoint("TOPLEFT", 10, -25)
-    bg:SetPoint("BOTTOMRIGHT", -4, 4)
-    bg:SetFrameLevel(0)
-    bg.texture = bg:CreateTexture(nil, "BACKGROUND")
-    bg.texture:SetAllPoints(bg)
-    bg.texture:SetColorTexture(0, 0, 0, 1)
+    local scroll, content = self:CreateBodyScroll(root.Body)
+    root._scroll = scroll
+    root._content = content
 
-    self.activeWindow = window
-    self:UpdateActive()
-end
+    local foot = root.Footer
+    local fontPath = root._pointFontPath
+    local r0, g0, b0 = self.GetTitleTextColor()
+    local tr, tg, tb = self.GetPlayerClassColor()
 
---[[ 
-    Функция: Обновление списка активных челленджей
-    - Вызывается при изменении статуса челленджей
-    - Отображает иконку, название, описание, очки и статус (Active/Failed)
-]]
-function UI:UpdateActive()
-    local db = addon.CharDB
-    local window = self.activeWindow
-    if not window then return end
+    local pointsLabel = foot:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+    pointsLabel:SetPoint("CENTER", foot, "CENTER", 0, 6)
+    UI.SafeSetFont(pointsLabel, fontPath, 18, "GameFontHighlightLarge")
+    root._pointsFooter = pointsLabel
 
-    -- очищаем старые элементы
-    window:ReleaseChildren()
+    function root._layoutRows()
+        local db = addon.CharDB
+        local contentFrame = root._content
+        if not contentFrame then return end
 
-    for key, challenge in pairs(addon:GetChallengesState()) do
-        if db.activeChallenges[key] then
-            local container = AceGUI:Create("SimpleGroup")
-            container:SetLayout("Flow")
-            container:SetFullWidth(true)
-            container:SetHeight(80)
+        for _, child in ipairs({ contentFrame:GetChildren() }) do
+            child:Hide()
+            child:SetParent(nil)
+        end
 
-            local icon = AceGUI:Create("Icon")
-            icon:SetImage(challenge.icon)
-            icon:SetImageSize(36, 36)
-            icon:SetWidth(40)
-            icon.frame:Disable() -- отключаем hover
+        local y = -6
+        local order = UI.SortedChallengeKeys()
 
-            local title = "|cFFFF0000" .. challenge.name .. "|r"
+        for _, key in ipairs(order) do
+            if db.activeChallenges[key] then
+            local challenge = addon:GetChallengesState()[key]
+            if challenge then
+
+            local row = CreateFrame("Frame", nil, contentFrame)
+            row:SetWidth(contentFrame:GetWidth() > 0 and contentFrame:GetWidth() or 400)
+
+            local icon = row:CreateTexture(nil, "ARTWORK")
+            icon:SetSize(44, 44)
+            icon:SetPoint("TOPLEFT", row, "TOPLEFT", 6, -6)
+            icon:SetTexture(challenge.icon)
+            icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+            local titleFs = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+            titleFs:SetPoint("TOPLEFT", icon, "TOPRIGHT", 12, -2)
+            titleFs:SetWidth(row:GetWidth() - 36)
+            titleFs:SetJustifyH("LEFT")
+            UI.SafeSetFont(titleFs, fontPath, 15, "GameFontNormalLarge")
+            titleFs:SetTextColor(tr, tg, tb)
+            titleFs:SetText(challenge.name)
+
+            local bodyFs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            bodyFs:SetPoint("TOPLEFT", titleFs, "BOTTOMLEFT", 0, -4)
+            bodyFs:SetWidth(row:GetWidth() - 36)
+            bodyFs:SetJustifyH("LEFT")
+            UI.SafeSetFont(bodyFs, fontPath, 12, "GameFontHighlightSmall")
+            bodyFs:SetTextColor(r0, g0, b0)
+
             local desc = challenge.description
             local pts = "|cFFFFFF00+" .. challenge.points .. " points|r"
-
             local extra = ""
 
-            -- доп. инфо для SingleContinent
             if key == "SingleContinent" then
                 local currentID = GetCurrentContinent()
                 local currentName = currentID and addon:GetContinentName(currentID) or "Unknown"
-
                 local startName = db.startContinent and addon:GetContinentName(db.startContinent) or "Unknown"
 
                 local color = "|cFF00FF00"
                 if db.startContinent and currentID and currentID ~= db.startContinent then
                     color = "|cFFFF0000"
                 end
-
                 extra = "\n|cFFFFFF00Starting: " .. startName .. "|r" ..
                         "\n" .. color .. "Current: " .. currentName .. "|r"
+            elseif key == "CraftedLockedDuo" then
+                local pn = db.craftedDuoPartner or ""
+                extra = "\n|cFFFFFF00Partner: " .. (pn ~= "" and pn or "(not set)") .. "|r"
+            elseif key == "CraftedLockedSolo" then
+                extra = "\n|cFFFFFF00Solo: only your own crafts.|r"
             end
 
-            -- статус челленджа
-            local status = db.failedChallenges[key] and "|cFFFF0000Failed|r" or "|cFF00FF00Active|r"
+            local status = db.failedChallenges[key]
+            local statusStr = status and "|cFFFF4444Failed|r" or "|cFF66FF66Active|r"
+            bodyFs:SetText(desc .. "\n" .. pts .. extra .. "\n" .. statusStr)
 
-            local text = AceGUI:Create("Label")
-            text:SetText(title .. "\n" .. desc .. "\n" .. pts .. extra .. "\n[" .. status .. "]")
-            text:SetWidth(320)
+            local rowH = math.max(56, titleFs:GetStringHeight() + bodyFs:GetStringHeight() + 16)
+            row:SetHeight(rowH)
+            row:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 0, y)
+            y = y - rowH - 10
 
-            container:AddChild(icon)
-            container:AddChild(text)
+            end
+            end
+        end
 
-            window:AddChild(container)
+        contentFrame:SetHeight(math.max(1, -y))
+        if root._scroll then
+            root._scroll:SetVerticalScroll(0)
         end
     end
 
-    -- отступ
-    local spacer = AceGUI:Create("Label")
-    spacer:SetText(" ")
-    spacer:SetFullWidth(true)
-    window:AddChild(spacer)
+    root._layoutRows()
+    if root._pointsFooter then
+        root._pointsFooter:SetText("|cFFFFFF00Total points: " .. addon:GetPoints() .. "|r")
+    end
 
-    -- отображение total points
-    local points = addon:GetPoints()
-    local pointsLabel = AceGUI:Create("Label")
-    pointsLabel:SetText("|cFFFFFF00Total Points: " .. points .. "|r")
-    pointsLabel:SetFullWidth(true)
-    pointsLabel:SetFontObject(GameFontNormalLarge)
+    self.activeWindow = root
+end
 
-    window:AddChild(pointsLabel)
+function UI:UpdateActive()
+    local root = self.activeWindow
+    if not root or not root._layoutRows then return end
+    root._layoutRows()
+    if root._pointsFooter then
+        root._pointsFooter:SetText("|cFFFFFF00Total points: " .. addon:GetPoints() .. "|r")
+    end
 end

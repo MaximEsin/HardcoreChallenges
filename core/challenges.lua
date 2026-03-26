@@ -55,6 +55,20 @@ addon.Challenges = {
         enabledByDefault = false,
         points = 30,
     },
+    ["CraftedLockedSolo"] = {
+        name = "Crafted Locked (Solo)",
+        description = "Start naked. You may only equip armor, weapons, and bags that you crafted yourself. Other items cannot be worn.",
+        icon = "Interface\\Icons\\Trade_Engineering",
+        enabledByDefault = false,
+        points = 25,
+    },
+    ["CraftedLockedDuo"] = {
+        name = "Crafted Locked (Duo)",
+        description = "Same as solo, but you may also equip gear your linked partner traded to you (both must run the addon and set each other as partners). Other looted or bought gear is never allowed.",
+        icon = "Interface\\Icons\\inv_gizmo_02",
+        enabledByDefault = false,
+        points = 25,
+    },
 }
 
 --[[ 

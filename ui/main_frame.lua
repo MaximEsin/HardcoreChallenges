@@ -2,13 +2,11 @@
 
 local addon = HardcoreChallenges
 local UI = addon.UI
-local AceGUI = LibStub("AceGUI-3.0") -- библиотека GUI для аддонов
 
---[[ 
-    Функция: Получение текущего континента игрока
-    Используется для челленджа SingleContinent
-    Возвращает parentMapID или mapID, если parent отсутствует
-]]
+local function strtrim(s)
+    return (s or ""):gsub("^%s+", ""):gsub("%s+$", "")
+end
+
 local function GetContinent()
     local mapID = C_Map.GetBestMapForUnit("player")
     if not mapID then return nil end
@@ -19,158 +17,252 @@ local function GetContinent()
     return info.parentMapID or mapID
 end
 
---[[ 
-    Функция: Показ окна выбора челленджей
-    - Если окно уже существует, просто показывает его
-    - Создаёт GUI окно с:
-        - фоном
-        - списком челленджей (иконка + название + описание + очки)
-        - чекбоксом для включения/отключения челленджа
-        - кнопкой Start
-    Пример: UI:ShowSelection()
-]]
+local function HasSelfFoundBuff()
+    for i = 1, 40 do
+        local name = UnitBuff("player", i)
+        if not name then break end
+        if name == "Self Found" then
+            return true
+        end
+    end
+    return false
+end
+
 function UI:ShowSelection()
     local db = addon.CharDB
 
-    -- окно уже открыто
     if self.selectionWindow then
         self.selectionWindow:Show()
+        self.selectionWindow:RefreshTheme()
+        local content = self.selectionWindow._content
+        if content then
+            for _, child in ipairs({ content:GetChildren() }) do
+                if child._challengeKey and child._checkbox then
+                    child._checkbox:SetChecked(db.activeChallenges[child._challengeKey] and true or false)
+                end
+                if child._buildBodyText then
+                    child._buildBodyText()
+                end
+            end
+        end
+        if self.selectionWindow._updatePoints then
+            self.selectionWindow._updatePoints()
+        end
+        if self.selectionWindow._refreshCraftedMutex then
+            self.selectionWindow._refreshCraftedMutex()
+        end
+        if self.selectionWindow._syncPartnerRow then
+            self.selectionWindow._syncPartnerRow()
+        end
         return
     end
 
     local frameName = "HardcoreChallenges_SelectionFrame"
+    local root = self:CreateThemedWindow({
+        name = frameName,
+        title = "Select Challenges",
+        width = 468,
+        height = 520,
+    })
 
-    local window = AceGUI:Create("Window")
-    window:SetTitle("Select Challenges")
-    window:SetLayout("List")
-    window:SetWidth(420)
-    window:SetHeight(450)
-    window:EnableResize(false)
-    window.frame:SetParent(UIParent)
-    _G[frameName] = window.frame
+    _G[frameName] = root
     tinsert(UISpecialFrames, frameName)
+    root.Footer:SetHeight(100)
 
-    -- фон окна
-    local bg = CreateFrame("Frame", nil, window.frame)
-    bg:SetPoint("TOPLEFT", 10, -25)
-    bg:SetPoint("BOTTOMRIGHT", -4, 4)
-    bg:SetFrameLevel(0)
-    bg.texture = bg:CreateTexture(nil, "BACKGROUND")
-    bg.texture:SetAllPoints(bg)
-    bg.texture:SetColorTexture(0, 0, 0, 1) -- черный фон
+    local scroll, content = self:CreateBodyScroll(root.Body)
+    root._scroll = scroll
+    root._content = content
 
-    -- метка с очками
-    local pointsLabel = AceGUI:Create("Label")
-    pointsLabel:SetFullWidth(true)
+    local r0, g0, b0 = self.GetTitleTextColor()
+    local fontPath = root._pointFontPath
+    local tr, tg, tb = self.GetPlayerClassColor()
 
-    local function UpdatePoints()
-        pointsLabel:SetText("|cFFFFFF00Total Points: " .. addon:GetPoints() .. "|r")
+    local y = -6
+    local order = self.SortedChallengeKeys()
+
+    for _, key in ipairs(order) do
+        local challenge = addon:GetChallengesState()[key]
+        if challenge then
+        local row = CreateFrame("Frame", nil, content)
+        row:SetWidth(content:GetWidth() > 0 and content:GetWidth() or 400)
+
+        local iconBtn = CreateFrame("Button", nil, row)
+        iconBtn:SetSize(44, 44)
+        iconBtn:SetPoint("TOPLEFT", row, "TOPLEFT", 4, -4)
+        iconBtn:SetNormalTexture(challenge.icon)
+        iconBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+
+        local titleFs = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        titleFs:SetPoint("TOPLEFT", iconBtn, "TOPRIGHT", 12, -2)
+        titleFs:SetWidth(row:GetWidth() - 130)
+        titleFs:SetJustifyH("LEFT")
+        self.SafeSetFont(titleFs, fontPath, 15, "GameFontNormalLarge")
+        titleFs:SetTextColor(tr, tg, tb)
+        titleFs:SetText(challenge.name)
+
+        local bodyFs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        bodyFs:SetPoint("TOPLEFT", titleFs, "BOTTOMLEFT", 0, -4)
+        bodyFs:SetWidth(row:GetWidth() - 130)
+        bodyFs:SetJustifyH("LEFT")
+        self.SafeSetFont(bodyFs, fontPath, 12, "GameFontHighlightSmall")
+        bodyFs:SetTextColor(r0, g0, b0)
+
+        local function buildBodyText()
+            local desc = challenge.description
+            local pts = "|cFFFFFF00+" .. challenge.points .. " points|r"
+            local extra = ""
+            if key == "SingleContinent" then
+                local currentID = GetContinent()
+                local currentName = currentID and addon:GetContinentName(currentID) or "Unknown"
+
+                if db.startContinent then
+                    local startName = addon:GetContinentName(db.startContinent)
+                    local color = "|cFF00FF00"
+                    if currentID and currentID ~= db.startContinent then
+                        color = "|cFFFF0000"
+                    end
+                    extra = "\n|cFFFFFF00Starting: " .. startName .. "|r" ..
+                            "\n" .. color .. "Current: " .. currentName .. "|r"
+                else
+                    extra = "\n|cFFFFFF00Starting: will be set on start|r" ..
+                            "\n|cFF00FF00Current: " .. currentName .. "|r"
+                end
+            end
+            bodyFs:SetText(desc .. "\n" .. pts .. extra)
+        end
+        buildBodyText()
+
+        local cb = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
+        cb:SetSize(20, 20)
+        cb:SetPoint("TOPRIGHT", row, "TOPRIGHT", -10, -12)
+        cb:SetHitRectInsets(-4, -4, -4, -4)
+        local label = cb.text or cb.Text
+        if label then
+            label:SetText("")
+            label:Hide()
+        end
+        self.ApplyThemedCheckbox(cb)
+        cb:SetChecked(challenge.enabled)
+
+        cb:SetScript("OnClick", function()
+            db.activeChallenges[key] = cb:GetChecked() and true or false
+            if key == "CraftedLockedSolo" and db.activeChallenges[key] then
+                db.activeChallenges["CraftedLockedDuo"] = false
+            elseif key == "CraftedLockedDuo" and db.activeChallenges[key] then
+                db.activeChallenges["CraftedLockedSolo"] = false
+            end
+            if root._refreshCraftedMutex then root._refreshCraftedMutex() end
+            if root._syncPartnerRow then root._syncPartnerRow() end
+            if root._updatePoints then root._updatePoints() end
+        end)
+
+        iconBtn:SetScript("OnClick", function()
+            cb:Click()
+        end)
+
+        row._challengeKey = key
+        row._checkbox = cb
+        row._buildBodyText = buildBodyText
+
+        local rowH = math.max(56, titleFs:GetStringHeight() + bodyFs:GetStringHeight() + 20)
+        row:SetHeight(rowH)
+        row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
+        y = y - rowH - 10
+        end
     end
 
-    -- перебор всех челленджей
-    for key, challenge in pairs(addon:GetChallengesState()) do
-        local row = AceGUI:Create("SimpleGroup")
-        row:SetLayout("Flow")
-        row:SetFullWidth(true)
-        row:SetHeight(70)
+    content:SetHeight(math.max(1, -y))
 
-        -- иконка
-        local icon = AceGUI:Create("Icon")
-        icon:SetImage(challenge.icon)
-        icon:SetImageSize(36, 36)
-        icon:SetWidth(40)
+    local foot = root.Footer
 
-        -- текст челленджа
-        local title = "|cFFFF0000" .. challenge.name .. "|r"
-        local desc = challenge.description
-        local pts = "|cFFFFFF00+" .. challenge.points .. " points|r"
+    local partnerBlock = CreateFrame("Frame", nil, foot)
+    partnerBlock:SetHeight(24)
+    partnerBlock:SetPoint("TOPLEFT", foot, "TOPLEFT", 12, -4)
+    partnerBlock:SetPoint("TOPRIGHT", foot, "TOPRIGHT", -12, -4)
 
-        local extra = ""
+    local partnerLabel = partnerBlock:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    partnerLabel:SetPoint("LEFT", partnerBlock, "LEFT", 0, 0)
+    self.SafeSetFont(partnerLabel, fontPath, 12, "GameFontHighlightSmall")
+    partnerLabel:SetTextColor(r0, g0, b0)
+    partnerLabel:SetText("Duo partner")
 
-        -- дополнительные данные для SingleContinent
-        if key == "SingleContinent" then
-            local currentID = GetContinent()
-            local currentName = currentID and addon:GetContinentName(currentID) or "Unknown"
+    local partnerEdit = CreateFrame("EditBox", nil, partnerBlock, "InputBoxTemplate")
+    partnerEdit:SetSize(220, 18)
+    partnerEdit:SetPoint("LEFT", partnerLabel, "RIGHT", 8, 0)
+    partnerEdit:SetAutoFocus(false)
+    partnerEdit:SetMaxLetters(50)
+    partnerEdit:SetText(db.craftedDuoPartner or "")
+    partnerEdit:SetScript("OnEditFocusLost", function(self)
+        db.craftedDuoPartner = strtrim(self:GetText() or "")
+    end)
 
-            if db.startContinent then
-                local startName = addon:GetContinentName(db.startContinent)
-                local color = "|cFF00FF00"
-                if currentID and currentID ~= db.startContinent then
-                    color = "|cFFFF0000"
-                end
-                extra = "\n|cFFFFFF00Starting: " .. startName .. "|r" ..
-                        "\n" .. color .. "Current: " .. currentName .. "|r"
-            else
-                extra = "\n|cFFFFFF00Starting: will be set on start|r" ..
-                        "\n|cFF00FF00Current: " .. currentName .. "|r"
+    function root._syncPartnerRow()
+        local show = db.activeChallenges["CraftedLockedDuo"] and true or false
+        partnerBlock:SetShown(show)
+        if show then
+            partnerEdit:SetText(db.craftedDuoPartner or "")
+        end
+    end
+
+    function root._refreshCraftedMutex()
+        for _, child in ipairs({ content:GetChildren() }) do
+            local k = child._challengeKey
+            local cbx = child._checkbox
+            if cbx and (k == "CraftedLockedSolo" or k == "CraftedLockedDuo") then
+                cbx:SetChecked(db.activeChallenges[k] and true or false)
             end
         end
-
-        local text = AceGUI:Create("Label")
-        text:SetText(title .. "\n" .. desc .. "\n" .. pts .. extra)
-        text:SetWidth(260)
-
-        -- чекбокс для выбора челленджа
-        local cb = AceGUI:Create("CheckBox")
-        cb:SetValue(challenge.enabled)
-        cb:SetWidth(40)
-
-        cb:SetCallback("OnValueChanged", function(_, _, val)
-            db.activeChallenges[key] = val
-            UpdatePoints()
-        end)
-
-        -- клик по иконке тоже меняет состояние
-        icon.frame:SetScript("OnMouseDown", function()
-            local newVal = not cb:GetValue()
-            cb:SetValue(newVal)
-            db.activeChallenges[key] = newVal
-            UpdatePoints()
-        end)
-
-        row:AddChild(icon)
-        row:AddChild(text)
-        row:AddChild(cb)
-
-        window:AddChild(row)
     end
 
-    UpdatePoints()
-    window:AddChild(pointsLabel)
+    root._syncPartnerRow()
 
-    -- кнопка "Start"
-    local btn = AceGUI:Create("Button")
-    btn:SetText("Start")
-    btn:SetWidth(120)
+    local pointsLabel = foot:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+    pointsLabel:SetPoint("LEFT", foot, "LEFT", 20, 10)
+    self.SafeSetFont(pointsLabel, fontPath, 16, "GameFontHighlightLarge")
 
-    btn:SetCallback("OnClick", function()
-        -- проверка SelfFound
-        if db.activeChallenges["SelfFound"] then
-            local hasBuff = false
-            for i = 1, 40 do
-                local name = UnitBuff("player", i)
-                if not name then break end
-                if name == "Self Found" then
-                    hasBuff = true
-                    break
-                end
+    function root._updatePoints()
+        pointsLabel:SetText("|cFFFFFF00Total: " .. addon:GetPoints() .. " pts|r")
+    end
+    root._updatePoints()
+
+    local startBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
+    startBtn:SetSize(132, 28)
+    startBtn:SetPoint("RIGHT", foot, "RIGHT", -18, 10)
+    startBtn:SetText("Start")
+    startBtn:SetScript("OnClick", function()
+        local crafted = db.activeChallenges["CraftedLockedSolo"] or db.activeChallenges["CraftedLockedDuo"]
+        if crafted then
+            if not addon:CraftedLockIsNakedForStart() then
+                UIErrorsFrame:AddMessage("Crafted Lock: remove all armor, weapons, and equipped bags. Shirt and tabard may stay empty or any; bags in bag slots must be unequipped.", 1, 0, 0)
+                return
             end
-            if not hasBuff then
+            if db.activeChallenges["CraftedLockedDuo"] then
+                local pn = strtrim(partnerEdit:GetText() or "")
+                if pn == "" then
+                    UIErrorsFrame:AddMessage("Crafted Lock (Duo): enter your partner's character as Name or Name-Realm.", 1, 0, 0)
+                    return
+                end
+                db.craftedDuoPartner = pn
+            else
+                db.craftedDuoPartner = ""
+            end
+            addon:CraftedLockOnChallengeStart()
+        end
+
+        if db.activeChallenges["SelfFound"] then
+            if not HasSelfFoundBuff() then
                 db.failedChallenges["SelfFound"] = true
             end
         end
 
-        -- сохраняем континент для SingleContinent
         if db.activeChallenges["SingleContinent"] then
             db.startContinent = GetContinent()
         end
 
         db.characterStarted = true
-        window:Hide()
+        root:Hide()
         UI:ShowActive()
     end)
 
-    window:AddChild(btn)
-
-    self.selectionWindow = window
+    self.selectionWindow = root
 end

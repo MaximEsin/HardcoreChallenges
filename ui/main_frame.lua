@@ -17,17 +17,6 @@ local function GetContinent()
     return info.parentMapID or mapID
 end
 
-local function HasSelfFoundBuff()
-    for i = 1, 40 do
-        local name = UnitBuff("player", i)
-        if not name then break end
-        if name == "Self Found" then
-            return true
-        end
-    end
-    return false
-end
-
 function UI:ShowSelection()
     local db = addon.CharDB
 
@@ -277,7 +266,7 @@ function UI:ShowSelection()
         end
 
         if db.activeChallenges["SelfFound"] then
-            if not HasSelfFoundBuff() then
+            if not addon:HasSelfFoundBuff() then
                 db.failedChallenges["SelfFound"] = true
             end
         end

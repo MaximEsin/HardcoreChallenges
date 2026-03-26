@@ -12,11 +12,40 @@ function addon:HubEnsure()
     return HardcoreChallengesHubDB
 end
 
+local META_KEY = "MetaAllChallenges"
+
+function addon:HubMetaChallengeKey()
+    return META_KEY
+end
+
+function addon:HubAllBaseChallengesComplete()
+    local hub = self:HubEnsure()
+    for key in pairs(self.Challenges) do
+        if key ~= META_KEY then
+            if not hub.completedKeys[key] then
+                return false
+            end
+        end
+    end
+    return true
+end
+
+--- Grants meta hub completion when every other challenge is in hub; no-op if not ready.
+function addon:HubSyncMetaChallenge()
+    if not self.Challenges[META_KEY] then return end
+    local hub = self:HubEnsure()
+    if hub.completedKeys[META_KEY] then return end
+    if not self:HubAllBaseChallengesComplete() then return end
+    hub.completedKeys[META_KEY] = true
+end
+
 function addon:HubTryAddCompletion(key)
     if not key or not self.Challenges[key] then return false end
+    if self.Challenges[key].hubOnly then return false end
     local hub = self:HubEnsure()
     if hub.completedKeys[key] then return false end
     hub.completedKeys[key] = true
+    self:HubSyncMetaChallenge()
     if self.UI and self.UI.RefreshHub then
         self.UI:RefreshHub()
     end
@@ -76,6 +105,10 @@ end
 function addon:SyncAccountHubFromCharacter()
     self:ProcessHubLevel60Completions()
     self:ProcessHubSlayerFromProgress()
+    self:HubSyncMetaChallenge()
+    if self.UI and self.UI.RefreshHub and self.UI.hubWindow and self.UI.hubWindow:IsShown() then
+        self.UI:RefreshHub()
+    end
 end
 
 function addon:HubOnEnable()

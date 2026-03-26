@@ -7,15 +7,24 @@ local UI = addon.UI
 -- 🔍 HELPERS
 -- =========================
 
---[[ 
-    Проверка баффа Self Found
-    Возвращает true, если есть бафф
+--[[
+    Официальный баф Self-Found в клиенте — «Self-Found Adventurer» (не «Self Found»).
+    Проверяем по spellId, чтобы не зависеть от локали и точной строки имени.
 ]]
-local function HasSelfFoundBuff()
+local SELF_FOUND_SPELL_ID = 431567
+
+function addon:HasSelfFoundBuff()
+    if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
+        local d = C_UnitAuras.GetPlayerAuraBySpellID(SELF_FOUND_SPELL_ID)
+        if d then return true end
+    end
     for i = 1, 40 do
-        local name = UnitBuff("player", i)
+        local name, _, _, _, _, _, _, _, _, _, spellId = UnitBuff("player", i)
         if not name then break end
-        if name == "Self Found" then
+        if spellId == SELF_FOUND_SPELL_ID then
+            return true
+        end
+        if name == "Self Found" or name == "Self-Found Adventurer" then
             return true
         end
     end
@@ -109,7 +118,7 @@ local function CheckSelfFound()
     if not db.activeChallenges["SelfFound"] then return end
     if db.failedChallenges["SelfFound"] then return end
 
-    if not HasSelfFoundBuff() then
+    if not addon:HasSelfFoundBuff() then
         db.failedChallenges["SelfFound"] = true
         UIErrorsFrame:AddMessage("Self Found challenge failed!", 1, 0, 0)
         if UI.activeWindow then UI:UpdateActive() end
@@ -139,8 +148,15 @@ end
 -- 📡 EVENTS
 -- =========================
 addon:RegisterEvent("PLAYER_ENTERING_WORLD", function()
-    CheckSelfFound()
-    CheckSingleContinent()
+    local function run()
+        CheckSelfFound()
+        CheckSingleContinent()
+    end
+    run()
+    -- Ауры иногда ещё не отдаются в первом кадре PEW; без отложенного вызова возможен ложный фейл.
+    if C_Timer and C_Timer.After then
+        C_Timer.After(0, run)
+    end
 end)
 
 addon:RegisterEvent("UNIT_AURA", function(_, unit)

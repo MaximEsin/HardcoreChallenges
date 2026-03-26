@@ -3,11 +3,13 @@
 local addon = HardcoreChallenges
 local UI = addon.UI
 
-local function SortedHubKeys()
+local META_KEY = "MetaAllChallenges"
+
+local function SortedHubKeysExcludingMeta()
     local hub = addon:HubEnsure()
     local keys = {}
     for k in pairs(hub.completedKeys) do
-        if addon.Challenges[k] then
+        if addon.Challenges[k] and k ~= META_KEY then
             keys[#keys + 1] = k
         end
     end
@@ -20,6 +22,7 @@ local function SortedHubKeys()
 end
 
 function UI:RefreshHub()
+    addon:HubSyncMetaChallenge()
     local root = self.hubWindow
     if not root or not root._layoutHub then return end
     root._layoutHub()
@@ -72,7 +75,59 @@ function UI:ShowHub()
         end
 
         local y = -8
-        local keys = SortedHubKeys()
+        local hub = addon:HubEnsure()
+        local metaDef = addon.Challenges[META_KEY]
+
+        if metaDef then
+            local metaComplete = hub.completedKeys[META_KEY] and true or false
+            local row = CreateFrame("Frame", nil, contentFrame)
+            row:SetWidth(contentFrame:GetWidth() > 0 and contentFrame:GetWidth() or 380)
+
+            local icon = row:CreateTexture(nil, "ARTWORK")
+            icon:SetSize(40, 40)
+            icon:SetPoint("TOPLEFT", row, "TOPLEFT", 4, -4)
+            icon:SetTexture(metaDef.icon)
+            icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            if not metaComplete then
+                icon:SetDesaturated(true)
+                icon:SetAlpha(0.65)
+            end
+
+            local titleFs = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+            titleFs:SetPoint("TOPLEFT", icon, "TOPRIGHT", 10, -2)
+            titleFs:SetWidth(row:GetWidth() - 58)
+            titleFs:SetJustifyH("LEFT")
+            UI.SafeSetFont(titleFs, fontPath, 15, "GameFontNormalLarge")
+            titleFs:SetTextColor(tr, tg, tb)
+            titleFs:SetText(metaDef.name)
+
+            local statusFs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            statusFs:SetPoint("TOPLEFT", titleFs, "BOTTOMLEFT", 0, -4)
+            statusFs:SetWidth(row:GetWidth() - 58)
+            statusFs:SetJustifyH("LEFT")
+            UI.SafeSetFont(statusFs, fontPath, 12, "GameFontHighlightSmall")
+            if metaComplete then
+                statusFs:SetText("|cFF66FF66Complete|r  |cFFFFFF00+" .. (metaDef.points or 0) .. " account pts|r")
+            else
+                statusFs:SetText("|cFFFFAA66Incomplete|r — complete every other challenge below")
+            end
+
+            local descFs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            descFs:SetPoint("TOPLEFT", statusFs, "BOTTOMLEFT", 0, -3)
+            descFs:SetWidth(row:GetWidth() - 58)
+            descFs:SetJustifyH("LEFT")
+            UI.SafeSetFont(descFs, fontPath, 11, "GameFontHighlightSmall")
+            descFs:SetTextColor(r0 * 0.9, g0 * 0.9, b0 * 0.9)
+            descFs:SetText(metaDef.description)
+
+            local rowH = math.max(52, titleFs:GetStringHeight() + statusFs:GetStringHeight()
+                + descFs:GetStringHeight() + 28)
+            row:SetHeight(rowH)
+            row:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 0, y)
+            y = y - rowH - 14
+        end
+
+        local keys = SortedHubKeysExcludingMeta()
 
         if #keys == 0 then
             local row = CreateFrame("Frame", nil, contentFrame)
@@ -83,7 +138,7 @@ function UI:ShowHub()
             fs:SetJustifyH("LEFT")
             UI.SafeSetFont(fs, fontPath, 13, "GameFontHighlight")
             fs:SetTextColor(r0, g0, b0)
-            fs:SetText("No challenges completed on this account yet.")
+            fs:SetText("No other hub completions yet.")
             row:SetHeight(fs:GetStringHeight() + 12)
             row:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 0, y)
             y = y - row:GetHeight() - 8
@@ -130,6 +185,7 @@ function UI:ShowHub()
         end
     end
 
+    addon:HubSyncMetaChallenge()
     root._layoutHub()
     totalLabel:SetText("|cFFFFFF00Account points: " .. addon:HubGetTotalPoints() .. "|r")
 

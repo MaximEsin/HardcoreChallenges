@@ -73,6 +73,7 @@ function addon:HandleSlash(input)
         print("/hc hubreset — reset account hub (all chars)")
         print("/hc debug60 — treat as level 60 for hub (debug)")
         print("/hc debug60reset — clear debug 60 flag")
+        print("/hc debugslayer — set Slayer progress to goal and grant hub completion (debug)")
         return
     end
 
@@ -92,6 +93,17 @@ function addon:HandleSlash(input)
     elseif cmd == "debug60reset" then
         self.CharDB.debugFakeLevel60 = false
         print("|cFF00FF00[HC]|r Debug level 60 flag cleared.")
+    elseif cmd == "debugslayer" then
+        local sk = self.SlayerChallengeKey or "Slayer1"
+        local goal = self.GetSlayerGoal and self:GetSlayerGoal() or 10000
+        self.CharDB.slayer1KillCount = goal
+        if self.HubTryAddCompletion then
+            self:HubTryAddCompletion(sk)
+        end
+        if self.SlayerRefreshUI then
+            self:SlayerRefreshUI()
+        end
+        print("|cFF00FF00[HC]|r Debug: Slayer at " .. goal .. " kills; hub completion applied if not already present.")
     else
         print("|cFFFFCC00[HC]|r Unknown command. Use /hc for help.")
     end

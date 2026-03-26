@@ -323,8 +323,10 @@ end
 
 function UI.SortedChallengeKeys()
     local keys = {}
-    for k in pairs(addon.Challenges or {}) do
-        keys[#keys + 1] = k
+    for k, def in pairs(addon.Challenges or {}) do
+        if not def.hubOnly then
+            keys[#keys + 1] = k
+        end
     end
     table.sort(keys, function(a, b)
         local na = addon.Challenges[a] and addon.Challenges[a].name or a

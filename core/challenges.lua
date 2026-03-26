@@ -11,6 +11,7 @@ local addon = HardcoreChallenges
         - icon: путь к иконке
         - enabledByDefault: включен ли по умолчанию
         - points: очки
+        - hubOnly: если true — только хаб (не в окне выбора / активных)
 ]]
 addon.Challenges = {
     ["Hardcore"] = {
@@ -83,6 +84,14 @@ addon.Challenges = {
         enabledByDefault = false,
         points = 30,
     },
+    ["MetaAllChallenges"] = {
+        name = "All Challenges",
+        description = "Account meta: complete every other challenge in the hub. Unlocks automatically.",
+        icon = "Interface\\Icons\\Achievement_Character_Human_Male",
+        enabledByDefault = false,
+        points = 100,
+        hubOnly = true,
+    },
 }
 
 --[[ 
@@ -98,17 +107,21 @@ function addon:GetChallengesState()
 
     local result = {}
     for key, challenge in pairs(self.Challenges) do
-        if db.activeChallenges[key] == nil then
-            db.activeChallenges[key] = challenge.enabledByDefault
-        end
+        if challenge.hubOnly then
+            -- Hub-only challenges never appear in selection / active lists.
+        else
+            if db.activeChallenges[key] == nil then
+                db.activeChallenges[key] = challenge.enabledByDefault
+            end
 
-        result[key] = {
-            name = challenge.name,
-            description = challenge.description,
-            icon = challenge.icon,
-            enabled = db.activeChallenges[key],
-            points = challenge.points or 0,
-        }
+            result[key] = {
+                name = challenge.name,
+                description = challenge.description,
+                icon = challenge.icon,
+                enabled = db.activeChallenges[key],
+                points = challenge.points or 0,
+            }
+        end
     end
 
     return result

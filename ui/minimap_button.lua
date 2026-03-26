@@ -1,13 +1,20 @@
 -- ui/minimap_button.lua
+
 local addon = HardcoreChallenges
 local UI = addon.UI
-local LDB = LibStub("LibDataBroker-1.1")
-local LDBIcon = LibStub("LibDBIcon-1.0")
+local LDB = LibStub("LibDataBroker-1.1", true)
+local LDBIcon = LibStub("LibDBIcon-1.0", true)
+
+local iconObject
 
 local function CreateMinimapButton()
-    if not addon.CharDB then return end -- безопасно, если CharDB ещё не готов
+    if not addon.CharDB then return end
+    if not LDB or not LDBIcon then return end
 
-    local icon = LDB:NewDataObject("HardcoreChallenges", {
+    -- уже создан
+    if iconObject then return end
+
+    iconObject = LDB:NewDataObject("HardcoreChallenges", {
         type = "data source",
         icon = "Interface\\Icons\\ability_creature_cursed_02",
         text = "Hardcore Challenges",
@@ -15,6 +22,7 @@ local function CreateMinimapButton()
         OnClick = function()
             local db = addon.CharDB
             local anySelected = false
+
             for _, v in pairs(db.activeChallenges) do
                 if v then anySelected = true break end
             end
@@ -32,10 +40,11 @@ local function CreateMinimapButton()
         end,
     })
 
-    LDBIcon:Register("HardcoreChallenges", icon, addon.CharDB.minimap)
+    if iconObject then
+        LDBIcon:Register("HardcoreChallenges", iconObject, addon.CharDB.minimap)
+    end
 end
 
--- Регистрируем миникнопку только после OnEnable
 addon:RegisterEvent("PLAYER_ENTERING_WORLD", function()
     CreateMinimapButton()
 end)

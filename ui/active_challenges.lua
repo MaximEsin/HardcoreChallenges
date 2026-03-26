@@ -1,7 +1,13 @@
+-- ui/active_challenges.lua
+
 local addon = HardcoreChallenges
 local UI = addon.UI
 local AceGUI = LibStub("AceGUI-3.0")
 
+--[[ 
+    Функция: Получение текущего континента игрока
+    Используется для проверки челленджа SingleContinent
+]]
 local function GetCurrentContinent()
     local mapID = C_Map.GetBestMapForUnit("player")
     if not mapID then return nil end
@@ -12,6 +18,11 @@ local function GetCurrentContinent()
     return info.parentMapID or mapID
 end
 
+--[[ 
+    Функция: Показ активных челленджей
+    - Если окно уже существует, обновляет и показывает его
+    - Создаёт GUI окно с фоном и списком активных челленджей
+]]
 function UI:ShowActive()
     if self.activeWindow then
         self:UpdateActive()
@@ -26,6 +37,7 @@ function UI:ShowActive()
     window:SetHeight(450)
     window:EnableResize(false)
 
+    -- черный фон
     local bg = CreateFrame("Frame", nil, window.frame)
     bg:SetPoint("TOPLEFT", 10, -25)
     bg:SetPoint("BOTTOMRIGHT", -4, 4)
@@ -38,11 +50,17 @@ function UI:ShowActive()
     self:UpdateActive()
 end
 
+--[[ 
+    Функция: Обновление списка активных челленджей
+    - Вызывается при изменении статуса челленджей
+    - Отображает иконку, название, описание, очки и статус (Active/Failed)
+]]
 function UI:UpdateActive()
     local db = addon.CharDB
     local window = self.activeWindow
     if not window then return end
 
+    -- очищаем старые элементы
     window:ReleaseChildren()
 
     for key, challenge in pairs(addon:GetChallengesState()) do
@@ -56,9 +74,7 @@ function UI:UpdateActive()
             icon:SetImage(challenge.icon)
             icon:SetImageSize(36, 36)
             icon:SetWidth(40)
-
-            -- убираем hover
-            icon.frame:Disable()
+            icon.frame:Disable() -- отключаем hover
 
             local title = "|cFFFF0000" .. challenge.name .. "|r"
             local desc = challenge.description
@@ -66,6 +82,7 @@ function UI:UpdateActive()
 
             local extra = ""
 
+            -- доп. инфо для SingleContinent
             if key == "SingleContinent" then
                 local currentID = GetCurrentContinent()
                 local currentName = currentID and addon:GetContinentName(currentID) or "Unknown"
@@ -77,11 +94,11 @@ function UI:UpdateActive()
                     color = "|cFFFF0000"
                 end
 
-                extra =
-                    "\n|cFFFFFF00Starting: " .. startName .. "|r" ..
-                    "\n" .. color .. "Current: " .. currentName .. "|r"
+                extra = "\n|cFFFFFF00Starting: " .. startName .. "|r" ..
+                        "\n" .. color .. "Current: " .. currentName .. "|r"
             end
 
+            -- статус челленджа
             local status = db.failedChallenges[key] and "|cFFFF0000Failed|r" or "|cFF00FF00Active|r"
 
             local text = AceGUI:Create("Label")
@@ -95,13 +112,14 @@ function UI:UpdateActive()
         end
     end
 
+    -- отступ
     local spacer = AceGUI:Create("Label")
     spacer:SetText(" ")
     spacer:SetFullWidth(true)
     window:AddChild(spacer)
 
+    -- отображение total points
     local points = addon:GetPoints()
-
     local pointsLabel = AceGUI:Create("Label")
     pointsLabel:SetText("|cFFFFFF00Total Points: " .. points .. "|r")
     pointsLabel:SetFullWidth(true)

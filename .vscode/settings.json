@@ -9,10 +9,12 @@
         "GameFontNormalLarge",
         "UnitBuff",
         "C_Map",
-        "Enum"
+        "Enum",
+        "UISpecialFrames"
     ],
     "cSpell.words": [
-        "geterrorhandler"
+        "geterrorhandler",
+        "tinsert"
     ],
     "Lua.diagnostics.disable": [
         "duplicate-set-field"

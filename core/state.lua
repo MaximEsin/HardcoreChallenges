@@ -1,6 +1,13 @@
+-- core/state.lua
+
 local addon = HardcoreChallenges
 addon.UI = addon.UI or {}
 
+--[[ 
+    Функция: Получение общего количества очков
+    - Суммирует points всех активных челленджей, которые не провалены
+    Пример: local total = addon:GetPoints()
+]]
 function addon:GetPoints()
     local db = self.CharDB
     local total = 0
@@ -17,7 +24,11 @@ function addon:GetPoints()
     return total
 end
 
--- 🌍 Получение имени континента
+--[[ 
+    Функция: Получение имени континента по mapID
+    Возвращает "Unknown", если info отсутствует
+    Пример: local name = addon:GetContinentName(mapID)
+]]
 function addon:GetContinentName(mapID)
     if not mapID then return "Unknown" end
 

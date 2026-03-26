@@ -1,5 +1,17 @@
+-- core/challenges.lua
+
 local addon = HardcoreChallenges
 
+--[[ 
+    Таблица: Все доступные челленджи
+    Ключ = идентификатор челленджа
+    Значения:
+        - name: название
+        - description: описание
+        - icon: путь к иконке
+        - enabledByDefault: включен ли по умолчанию
+        - points: очки
+]]
 addon.Challenges = {
     ["Hardcore"] = {
         name = "Hardcore",
@@ -16,21 +28,28 @@ addon.Challenges = {
         points = 10,
     },
     ["SelfFound"] = {
-    name = "Self Found",
-    description = "Have self found buff active until lvl 60",
-    icon = "Interface\\Icons\\ui_selffound",
-    enabledByDefault = false,
+        name = "Self Found",
+        description = "Have self found buff active until lvl 60",
+        icon = "Interface\\Icons\\ui_selffound",
+        enabledByDefault = false,
         points = 10,
     },
- ["SingleContinent"] = {
-    name = "Single Continent",
-    description = "You may not leave the continent you have spawned on",
-    icon = "Interface\\Icons\\spell_arcane_portalundercity",
-    enabledByDefault = false,
-    points = 30,
-},
+    ["SingleContinent"] = {
+        name = "Single Continent",
+        description = "You may not leave the continent you have spawned on",
+        icon = "Interface\\Icons\\spell_arcane_portalundercity",
+        enabledByDefault = false,
+        points = 30,
+    },
 }
 
+--[[ 
+    Функция: Получение состояния всех челленджей
+    - Проверяет базу данных
+    - Если челлендж не задан, берёт enabledByDefault
+    - Возвращает таблицу со всеми данными (icon, name, description, enabled, points)
+    Пример: local state = addon:GetChallengesState()
+]]
 function addon:GetChallengesState()
     local db = self.CharDB
     db.activeChallenges = db.activeChallenges or {}

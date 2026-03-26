@@ -108,6 +108,15 @@ function UI:ShowActive()
                 extra = "\n|cFFFFFF00Partner: " .. (pn ~= "" and pn or "(not set)") .. "|r"
             elseif key == "CraftedLockedSolo" then
                 extra = "\n|cFFFFFF00Solo: only your own crafts.|r"
+            elseif key == "SingleSpec" then
+                local st = addon:GetSingleSpecTalentState()
+                if st.treeCount == 0 then
+                    extra = "\n|cFFFFFF00Talent tree: none yet|r"
+                elseif st.treeCount == 1 then
+                    extra = "\n|cFF00FF00Talent tree: " .. (st.primaryName or "?") .. "|r"
+                else
+                    extra = "\n|cFFFF0000Points in " .. st.treeCount .. " trees|r"
+                end
             end
 
             local status = db.failedChallenges[key]

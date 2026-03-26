@@ -98,6 +98,9 @@ function addon:OnEnable()
     if self.CraftedLockOnEnable then
         self:CraftedLockOnEnable()
     end
+    if self.SingleSpecOnEnable then
+        self:SingleSpecOnEnable()
+    end
 
     if self.CharDB.characterStarted then
         self.UI:ShowActive()

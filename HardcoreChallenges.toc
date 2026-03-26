@@ -20,6 +20,7 @@ libs\LibDBIcon-1.0\LibDBIcon-1.0\LibDBIcon-1.0.lua
 core\init.lua
 db.lua
 core\challenges.lua
+core\single_spec.lua
 core\crafted_lock.lua
 core\events.lua
 core\state.lua

@@ -127,6 +127,16 @@ function UI:ShowSelection()
                     extra = "\n|cFFFFFF00Starting: will be set on start|r" ..
                             "\n|cFF00FF00Current: " .. currentName .. "|r"
                 end
+            elseif key == "SingleSpec" then
+                local st = addon:GetSingleSpecTalentState()
+                if st.treeCount == 0 then
+                    extra = "\n|cFFFFFF00Talent tree: none yet (no points spent)|r"
+                elseif st.treeCount == 1 then
+                    extra = "\n|cFF00FF00Talent tree: " .. (st.primaryName or "?") .. "|r"
+                else
+                    extra = "\n|cFFFF0000Talent points in " .. st.treeCount ..
+                        " trees — violates Single Spec (fail on start / while active).|r"
+                end
             end
             bodyFs:SetText(desc .. "\n" .. pts .. extra)
         end
@@ -257,6 +267,10 @@ function UI:ShowSelection()
 
         if db.activeChallenges["SingleContinent"] then
             db.startContinent = GetContinent()
+        end
+
+        if addon.SingleSpecOnChallengeStart then
+            addon:SingleSpecOnChallengeStart()
         end
 
         db.characterStarted = true

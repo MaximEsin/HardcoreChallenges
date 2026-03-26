@@ -69,6 +69,13 @@ addon.Challenges = {
         enabledByDefault = false,
         points = 25,
     },
+    ["SingleSpec"] = {
+        name = "Single Spec",
+        description = "Spend talent points in only one talent tree. Any points in a second tree fails the challenge (talents unlock at level 10).",
+        icon = "Interface\\Icons\\Ability_Marksmanship",
+        enabledByDefault = false,
+        points = 20,
+    },
 }
 
 --[[ 

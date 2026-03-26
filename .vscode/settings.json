@@ -10,7 +10,9 @@
         "UnitBuff",
         "C_Map",
         "Enum",
-        "UISpecialFrames"
+        "UISpecialFrames",
+        "UIParent",
+        "tinsert"
     ],
     "cSpell.words": [
         "geterrorhandler",

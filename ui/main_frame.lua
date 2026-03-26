@@ -38,12 +38,17 @@ function UI:ShowSelection()
         return
     end
 
+    local frameName = "HardcoreChallenges_SelectionFrame"
+
     local window = AceGUI:Create("Window")
     window:SetTitle("Select Challenges")
     window:SetLayout("List")
     window:SetWidth(420)
     window:SetHeight(450)
     window:EnableResize(false)
+    window.frame:SetParent(UIParent)
+    _G[frameName] = window.frame
+    tinsert(UISpecialFrames, frameName)
 
     -- фон окна
     local bg = CreateFrame("Frame", nil, window.frame)

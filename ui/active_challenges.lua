@@ -30,12 +30,20 @@ function UI:ShowActive()
         return
     end
 
+    local frameName = "HardcoreChallenges_ActiveFrame"
+
     local window = AceGUI:Create("Window")
     window:SetTitle("Active Challenges")
     window:SetLayout("Flow")
     window:SetWidth(420)
     window:SetHeight(450)
     window:EnableResize(false)
+    window.frame:SetParent(UIParent)
+    window.frame:SetFrameStrata("DIALOG")
+    window.frame:SetClampedToScreen(true)
+
+    _G[frameName] = window.frame
+    tinsert(UISpecialFrames, frameName)
 
     -- черный фон
     local bg = CreateFrame("Frame", nil, window.frame)

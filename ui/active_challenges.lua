@@ -32,9 +32,70 @@ function UI:ShowActive()
     _G[frameName] = root
     tinsert(UISpecialFrames, frameName)
 
-    local scroll, content = self:CreateBodyScroll(root.Body)
+    local body = root.Body
+    local tabBar = CreateFrame("Frame", nil, body)
+    tabBar:SetHeight(28)
+    tabBar:SetPoint("TOPLEFT", body, "TOPLEFT", 0, 0)
+    tabBar:SetPoint("TOPRIGHT", body, "TOPRIGHT", 0, 0)
+
+    local panelHost = CreateFrame("Frame", nil, body)
+    panelHost:SetPoint("TOPLEFT", tabBar, "BOTTOMLEFT", 0, -4)
+    panelHost:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", 0, 0)
+
+    local scroll, content = self:CreateBodyScroll(panelHost)
     root._scroll = scroll
     root._content = content
+
+    local titlesScroll, titlesContent = self:CreateBodyScroll(panelHost)
+    titlesScroll:Hide()
+    root._titlesScroll = titlesScroll
+    root._titlesContent = titlesContent
+
+    local btnChallenges = CreateFrame("Button", nil, tabBar, "UIPanelButtonTemplate")
+    btnChallenges:SetSize(128, 22)
+    btnChallenges:SetPoint("LEFT", tabBar, "LEFT", 4, 0)
+    local btnTitles = CreateFrame("Button", nil, tabBar, "UIPanelButtonTemplate")
+    btnTitles:SetSize(128, 22)
+    btnTitles:SetPoint("LEFT", btnChallenges, "RIGHT", 8, 0)
+
+    root._currentTab = "challenges"
+
+    local function setTabVisual(which)
+        if which == "challenges" then
+            btnChallenges:SetText("|cFFCCFFCCChallenges|r")
+            btnTitles:SetText("Titles")
+        else
+            btnChallenges:SetText("Challenges")
+            btnTitles:SetText("|cFFCCFFCCTitles|r")
+        end
+    end
+
+    local function showTab(which)
+        root._currentTab = which
+        if which == "challenges" then
+            scroll:Show()
+            titlesScroll:Hide()
+        else
+            scroll:Hide()
+            titlesScroll:Show()
+            if root._layoutTitles then
+                root._layoutTitles()
+            end
+        end
+        setTabVisual(which)
+    end
+
+    btnChallenges:SetScript("OnClick", function()
+        showTab("challenges")
+    end)
+    btnTitles:SetScript("OnClick", function()
+        showTab("titles")
+    end)
+    showTab("challenges")
+
+    function root._layoutTitles()
+        UI:LayoutTitlesTab(root._titlesContent)
+    end
 
     local foot = root.Footer
     local fontPath = root._pointFontPath
@@ -178,5 +239,8 @@ function UI:UpdateActive()
     root._layoutRows()
     if root._pointsFooter then
         root._pointsFooter:SetText("|cFFFFFF00Total points: " .. addon:GetPoints() .. "|r")
+    end
+    if root._currentTab == "titles" and root._layoutTitles then
+        root._layoutTitles()
     end
 end

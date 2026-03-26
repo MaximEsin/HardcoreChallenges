@@ -26,9 +26,11 @@ core\crafted_lock.lua
 core\events.lua
 core\state.lua
 core\hub.lua
+core\titles.lua
 
 # ===== UI =====
 ui\chrome.lua
+ui\titles_panel.lua
 ui\active_challenges.lua
 ui\hub_frame.lua
 ui\main_frame.lua

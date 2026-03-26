@@ -147,17 +147,17 @@ end
 -- =========================
 -- 📡 EVENTS
 -- =========================
-addon:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+-- PEW регистрируется в core/titles.lua (AceEvent: один обработчик PLAYER_ENTERING_WORLD на аддон).
+function addon:RunEnteringWorldChallengeChecks()
     local function run()
         CheckSelfFound()
         CheckSingleContinent()
     end
     run()
-    -- Ауры иногда ещё не отдаются в первом кадре PEW; без отложенного вызова возможен ложный фейл.
     if C_Timer and C_Timer.After then
         C_Timer.After(0, run)
     end
-end)
+end
 
 addon:RegisterEvent("UNIT_AURA", function(_, unit)
     if unit == "player" then CheckSelfFound() end

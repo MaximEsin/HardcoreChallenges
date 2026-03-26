@@ -484,7 +484,7 @@ function addon:CraftedLockOnEnable()
 
     self:RegisterEvent("CHAT_MSG_LOOT", OnChatLootCreate)
 
-    self:RegisterEvent("CHAT_MSG_ADDON", "CraftedLockChatAddon")
+    -- CHAT_MSG_ADDON: один обработчик на аддон в AceEvent — см. core/titles.lua (цепочка в OnTitlesAddonMsg).
 
     self:RegisterEvent("TRADE_SHOW", function()
         tradeAcceptedFlag = false

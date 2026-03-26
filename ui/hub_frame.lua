@@ -29,6 +29,9 @@ function UI:RefreshHub()
     if root._totalLabel then
         root._totalLabel:SetText("|cFFFFFF00Account points: " .. addon:HubGetTotalPoints() .. "|r")
     end
+    if self.RefreshTitlesTab then
+        self:RefreshTitlesTab()
+    end
 end
 
 function UI:ShowHub()

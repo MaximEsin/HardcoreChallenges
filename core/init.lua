@@ -33,6 +33,7 @@ function addon:InitDB()
         partnerGiftedKeys = {},
         slayer1KillCount = 0,
         debugFakeLevel60 = false,
+        selectedDisplayTitleKey = nil,
     }
 
     self.DB = LibStub("AceDB-3.0"):New("HardcoreChallengesDB", { profile = defaults }, false)
@@ -50,6 +51,11 @@ function addon:OnInitialize()
     self.CharDB.slayer1KillCount = self.CharDB.slayer1KillCount or 0
     if self.CharDB.debugFakeLevel60 == nil then
         self.CharDB.debugFakeLevel60 = false
+    end
+    if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
+        C_ChatInfo.RegisterAddonMessagePrefix("HCChallenges")
+    elseif RegisterAddonMessagePrefix then
+        RegisterAddonMessagePrefix("HCChallenges")
     end
     self:RegisterChatCommand("hc", "HandleSlash")
     if self.CraftedLockOnInitialize then
@@ -74,6 +80,8 @@ function addon:HandleSlash(input)
         print("/hc debug60 — treat as level 60 for hub (debug)")
         print("/hc debug60reset — clear debug 60 flag")
         print("/hc debugslayer — set Slayer progress to goal and grant hub completion (debug)")
+        print("/hc minimap — show minimap button if it was hidden")
+        print("/hc titlesdebug — debug display titles / addon messages")
         return
     end
 
@@ -104,6 +112,41 @@ function addon:HandleSlash(input)
             self:SlayerRefreshUI()
         end
         print("|cFF00FF00[HC]|r Debug: Slayer at " .. goal .. " kills; hub completion applied if not already present.")
+    elseif cmd == "minimap" then
+        local mm = self.CharDB.minimap
+        if type(mm) ~= "table" then
+            self.CharDB.minimap = { hide = false, angle = 0 }
+        else
+            mm.hide = false
+        end
+        local LDBIcon = LibStub("LibDBIcon-1.0", true)
+        if LDBIcon and LDBIcon.Show then
+            LDBIcon:Show("HardcoreChallenges")
+        end
+        print("|cFF00FF00[HC]|r Minimap button should be visible (reload UI if not).")
+    elseif cmd == "titlesdebug" then
+        print("|cFFFFCC00[HC]|r Titles debug:")
+        print("  selected key:", tostring(self.GetSelectedDisplayTitleKey and self:GetSelectedDisplayTitleKey()))
+        print("  broadcast payload:", tostring(self.GetBroadcastTitlePayload and self:GetBroadcastTitlePayload()))
+        local n = 0
+        if self.remoteTitleKeys then
+            for _ in pairs(self.remoteTitleKeys) do
+                n = n + 1
+            end
+        end
+        print("  remote cache entries:", n)
+        if UnitExists("target") and UnitIsPlayer("target") then
+            print("  target full:", tostring(GetUnitName("target", true)))
+            print("  target short:", tostring(UnitName("target")))
+            print("  effective title key:", tostring(self.GetEffectiveDisplayTitleKeyForUnit and self:GetEffectiveDisplayTitleKeyForUnit("target")))
+            local t = self.GetDisplayTitleForKey and self:GetDisplayTitleForKey(
+                self.GetEffectiveDisplayTitleKeyForUnit and self:GetEffectiveDisplayTitleKeyForUnit("target")
+            )
+            print("  display text:", tostring(t))
+        else
+            print("  (no player target — target someone to test lookup)")
+        end
+        print("  Tip: same guild/party or target + whisper Q must deliver HCChallenges messages.")
     else
         print("|cFFFFCC00[HC]|r Unknown command. Use /hc for help.")
     end
@@ -122,6 +165,7 @@ function addon:ResetCharacter()
     db.partnerGiftedKeys = {}
     db.slayer1KillCount = 0
     db.debugFakeLevel60 = false
+    db.selectedDisplayTitleKey = nil
 
     print("|cFFFF0000[Hardcore Challenges]|r Character data reset!")
 
@@ -158,6 +202,15 @@ function addon:OnEnable()
     end
     if self.HubOnEnable then
         self:HubOnEnable()
+    end
+    if self.TitlesOnEnable then
+        self:TitlesOnEnable()
+    end
+    if self.RunEnteringWorldChallengeChecks then
+        self:RunEnteringWorldChallengeChecks()
+    end
+    if self.EnsureMinimapButton then
+        self:EnsureMinimapButton()
     end
 
     if self.CharDB.characterStarted then

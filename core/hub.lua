@@ -49,6 +49,9 @@ function addon:HubTryAddCompletion(key)
     if self.UI and self.UI.RefreshHub then
         self.UI:RefreshHub()
     end
+    if self.UI and self.UI.RefreshTitlesTab then
+        self.UI:RefreshTitlesTab()
+    end
     return true
 end
 
@@ -67,8 +70,17 @@ end
 function addon:HubReset()
     local hub = self:HubEnsure()
     wipe(hub.completedKeys)
+    if self.ValidateSelectedDisplayTitle then
+        self:ValidateSelectedDisplayTitle()
+    end
+    if self.BroadcastDisplayTitle then
+        self:BroadcastDisplayTitle()
+    end
     if self.UI and self.UI.RefreshHub then
         self.UI:RefreshHub()
+    end
+    if self.UI and self.UI.RefreshTitlesTab then
+        self.UI:RefreshTitlesTab()
     end
     print("|cFFFFCC00[HC]|r Account hub cleared.")
 end
@@ -106,6 +118,15 @@ function addon:SyncAccountHubFromCharacter()
     self:ProcessHubLevel60Completions()
     self:ProcessHubSlayerFromProgress()
     self:HubSyncMetaChallenge()
+    if self.ValidateSelectedDisplayTitle then
+        self:ValidateSelectedDisplayTitle()
+    end
+    if self.BroadcastDisplayTitle then
+        self:BroadcastDisplayTitle()
+    end
+    if self.UI and self.UI.RefreshTitlesTab then
+        self.UI:RefreshTitlesTab()
+    end
     if self.UI and self.UI.RefreshHub and self.UI.hubWindow and self.UI.hubWindow:IsShown() then
         self.UI:RefreshHub()
     end

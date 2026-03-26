@@ -31,6 +31,7 @@ function addon:InitDB()
         craftedDuoPartner = "",
         craftedAllowedKeys = {},
         partnerGiftedKeys = {},
+        slayer1KillCount = 0,
     }
 
     self.DB = LibStub("AceDB-3.0"):New("HardcoreChallengesDB", { profile = defaults }, false)
@@ -45,6 +46,7 @@ end
 ]]
 function addon:OnInitialize()
     self:InitDB()
+    self.CharDB.slayer1KillCount = self.CharDB.slayer1KillCount or 0
     self:RegisterChatCommand("hc", "HandleSlash")
     if self.CraftedLockOnInitialize then
         self:CraftedLockOnInitialize()
@@ -74,6 +76,7 @@ function addon:ResetCharacter()
     db.craftedDuoPartner = ""
     db.craftedAllowedKeys = {}
     db.partnerGiftedKeys = {}
+    db.slayer1KillCount = 0
 
     print("|cFFFF0000[Hardcore Challenges]|r Character data reset!")
 
@@ -100,6 +103,9 @@ function addon:OnEnable()
     end
     if self.SingleSpecOnEnable then
         self:SingleSpecOnEnable()
+    end
+    if self.SlayerOnEnable then
+        self:SlayerOnEnable()
     end
 
     if self.CharDB.characterStarted then

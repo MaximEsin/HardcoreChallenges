@@ -111,7 +111,16 @@ function UI:ShowSelection()
             local desc = challenge.description
             local pts = "|cFFFFFF00+" .. challenge.points .. " points|r"
             local extra = ""
-            if key == "SingleContinent" then
+            if addon.IsSlayerChallengeKey and addon:IsSlayerChallengeKey(key) then
+                local cur, goal = addon:GetSlayerProgressDisplay(key)
+                local kcol = cur >= goal and "|cFF00FF00" or "|cFFFFFF00"
+                extra = "\n" .. kcol .. "Kills: " .. cur .. "/" .. goal .. "|r"
+                if cur >= goal then
+                    pts = "|cFFFFFF00+" .. challenge.points .. " points (earned)|r"
+                else
+                    pts = "|cFFFFFF00+" .. challenge.points .. " points (at " .. goal .. " kills)|r"
+                end
+            elseif key == "SingleContinent" then
                 local currentID = GetContinent()
                 local currentName = currentID and addon:GetContinentName(currentID) or "Unknown"
 

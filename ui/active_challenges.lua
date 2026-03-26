@@ -92,7 +92,16 @@ function UI:ShowActive()
             local pts = "|cFFFFFF00+" .. challenge.points .. " points|r"
             local extra = ""
 
-            if key == "SingleContinent" then
+            if addon.IsSlayerChallengeKey and addon:IsSlayerChallengeKey(key) then
+                local cur, goal = addon:GetSlayerProgressDisplay(key)
+                local kcol = cur >= goal and "|cFF00FF00" or "|cFFFFFF00"
+                extra = "\n" .. kcol .. "Kills: " .. cur .. "/" .. goal .. "|r"
+                if cur >= goal then
+                    pts = "|cFFFFFF00+" .. challenge.points .. " points (earned)|r"
+                else
+                    pts = "|cFFFFFF00+" .. challenge.points .. " points (at " .. goal .. " kills)|r"
+                end
+            elseif key == "SingleContinent" then
                 local currentID = GetCurrentContinent()
                 local currentName = currentID and addon:GetContinentName(currentID) or "Unknown"
                 local startName = db.startContinent and addon:GetContinentName(db.startContinent) or "Unknown"
@@ -120,7 +129,16 @@ function UI:ShowActive()
             end
 
             local status = db.failedChallenges[key]
-            local statusStr = status and "|cFFFF4444Failed|r" or "|cFF66FF66Active|r"
+            local statusStr
+            if status then
+                statusStr = "|cFFFF4444Failed|r"
+            elseif addon.IsSlayerChallengeKey and addon:IsSlayerChallengeKey(key) then
+                local cur = select(1, addon:GetSlayerProgressDisplay(key))
+                local goal = addon.GetSlayerGoal and addon:GetSlayerGoal() or 10000
+                statusStr = cur >= goal and "|cFF66FF66Complete|r" or "|cFF66FF66Active|r"
+            else
+                statusStr = "|cFF66FF66Active|r"
+            end
             bodyFs:SetText(desc .. "\n" .. pts .. extra .. "\n" .. statusStr)
 
             local rowH = math.max(56, titleFs:GetStringHeight() + bodyFs:GetStringHeight() + 16)

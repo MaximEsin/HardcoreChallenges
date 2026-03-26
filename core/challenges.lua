@@ -76,6 +76,13 @@ addon.Challenges = {
         enabledByDefault = false,
         points = 20,
     },
+    ["Slayer1"] = {
+        name = "Slayer",
+        description = "Kill 10000 enemies with your character or pet (killing blow). Any creature type counts. Points apply when the goal is reached.",
+        icon = "Interface\\Icons\\Ability_Warrior_IntensifyRage",
+        enabledByDefault = false,
+        points = 30,
+    },
 }
 
 --[[ 

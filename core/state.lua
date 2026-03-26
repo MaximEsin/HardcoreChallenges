@@ -16,7 +16,14 @@ function addon:GetPoints()
         if enabled and not db.failedChallenges[key] then
             local challenge = self.Challenges[key]
             if challenge and challenge.points then
-                total = total + challenge.points
+                if self.SlayerChallengeKey and key == self.SlayerChallengeKey then
+                    local n = db.slayer1KillCount or 0
+                    if n >= (self.GetSlayerGoal and self:GetSlayerGoal() or 10000) then
+                        total = total + challenge.points
+                    end
+                else
+                    total = total + challenge.points
+                end
             end
         end
     end

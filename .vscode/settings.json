@@ -7,7 +7,9 @@
         "CloseBankFrame",
         "UnitName",
         "GameFontNormalLarge",
-        "UnitBuff"
+        "UnitBuff",
+        "C_Map",
+        "Enum"
     ],
     "cSpell.words": [
         "geterrorhandler"

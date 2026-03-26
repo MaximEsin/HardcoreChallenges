@@ -20,6 +20,7 @@ function addon:InitDB()
         activeChallenges = {},
         failedChallenges = {},
         minimap = { hide = false, angle = 0 },
+        startContinent = nil,
     }
 
     self.DB = LibStub("AceDB-3.0"):New("HardcoreChallengesDB", { profile = defaults }, false)

@@ -16,3 +16,13 @@ function addon:GetPoints()
 
     return total
 end
+
+-- 🌍 Получение имени континента
+function addon:GetContinentName(mapID)
+    if not mapID then return "Unknown" end
+
+    local info = C_Map.GetMapInfo(mapID)
+    if not info then return "Unknown" end
+
+    return info.name or "Unknown"
+end

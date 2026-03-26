@@ -20,7 +20,14 @@ addon.Challenges = {
     description = "Have self found buff active until lvl 60",
     icon = "Interface\\Icons\\ui_selffound",
     enabledByDefault = false,
-    points = 10,
+        points = 10,
+    },
+ ["SingleContinent"] = {
+    name = "Single Continent",
+    description = "You may not leave the continent you have spawned on",
+    icon = "Interface\\Icons\\spell_arcane_portalundercity",
+    enabledByDefault = false,
+    points = 30,
 },
 }
 

@@ -2,6 +2,16 @@ local addon = HardcoreChallenges
 local UI = addon.UI
 local AceGUI = LibStub("AceGUI-3.0")
 
+local function GetCurrentContinent()
+    local mapID = C_Map.GetBestMapForUnit("player")
+    if not mapID then return nil end
+
+    local info = C_Map.GetMapInfo(mapID)
+    if not info then return nil end
+
+    return info.parentMapID or mapID
+end
+
 function UI:ShowActive()
     if self.activeWindow then
         self:UpdateActive()
@@ -40,24 +50,42 @@ function UI:UpdateActive()
             local container = AceGUI:Create("SimpleGroup")
             container:SetLayout("Flow")
             container:SetFullWidth(true)
-            container:SetHeight(60)
+            container:SetHeight(80)
 
             local icon = AceGUI:Create("Icon")
             icon:SetImage(challenge.icon)
             icon:SetImageSize(36, 36)
             icon:SetWidth(40)
 
-            -- ✅ УБИРАЕМ hover НАВСЕГДА
+            -- убираем hover
             icon.frame:Disable()
-
-            local status = db.failedChallenges[key] and "|cFFFF0000Failed|r" or "|cFF00FF00Active|r"
 
             local title = "|cFFFF0000" .. challenge.name .. "|r"
             local desc = challenge.description
             local pts = "|cFFFFFF00+" .. challenge.points .. " points|r"
 
+            local extra = ""
+
+            if key == "SingleContinent" then
+                local currentID = GetCurrentContinent()
+                local currentName = currentID and addon:GetContinentName(currentID) or "Unknown"
+
+                local startName = db.startContinent and addon:GetContinentName(db.startContinent) or "Unknown"
+
+                local color = "|cFF00FF00"
+                if db.startContinent and currentID and currentID ~= db.startContinent then
+                    color = "|cFFFF0000"
+                end
+
+                extra =
+                    "\n|cFFFFFF00Starting: " .. startName .. "|r" ..
+                    "\n" .. color .. "Current: " .. currentName .. "|r"
+            end
+
+            local status = db.failedChallenges[key] and "|cFFFF0000Failed|r" or "|cFF00FF00Active|r"
+
             local text = AceGUI:Create("Label")
-            text:SetText(title .. "\n" .. desc .. "\n" .. pts .. " [" .. status .. "]")
+            text:SetText(title .. "\n" .. desc .. "\n" .. pts .. extra .. "\n[" .. status .. "]")
             text:SetWidth(320)
 
             container:AddChild(icon)

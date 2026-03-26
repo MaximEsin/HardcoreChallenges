@@ -72,8 +72,9 @@
         "UnitClass",
         "UnitCreatureTypeID",
         "UnitExists",
-        "UnitIsPlayer",
         "UnitGUID",
+        "UnitIsPlayer",
+        "UnitLevel",
         "UnitName",
         "UnitTokenFromGUID",
         "wipe"

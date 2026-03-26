@@ -244,6 +244,14 @@ function UI:ShowSelection()
     end
     root._updatePoints()
 
+    local hubBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
+    hubBtn:SetSize(96, 28)
+    hubBtn:SetPoint("RIGHT", foot, "RIGHT", -158, 10)
+    hubBtn:SetText("Hub")
+    hubBtn:SetScript("OnClick", function()
+        UI:ShowHub()
+    end)
+
     local startBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
     startBtn:SetSize(132, 28)
     startBtn:SetPoint("RIGHT", foot, "RIGHT", -18, 10)

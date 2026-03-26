@@ -152,6 +152,10 @@ local function TryIncrementSlayer()
 
     db.slayer1KillCount = c + 1
     addon:SlayerRefreshUI()
+    local goal = GOAL
+    if (db.slayer1KillCount or 0) >= goal and addon.HubTryAddCompletion then
+        addon:HubTryAddCompletion(KEY)
+    end
     return true
 end
 

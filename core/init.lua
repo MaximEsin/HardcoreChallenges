@@ -32,6 +32,7 @@ function addon:InitDB()
         craftedAllowedKeys = {},
         partnerGiftedKeys = {},
         slayer1KillCount = 0,
+        debugFakeLevel60 = false,
     }
 
     self.DB = LibStub("AceDB-3.0"):New("HardcoreChallengesDB", { profile = defaults }, false)
@@ -47,6 +48,9 @@ end
 function addon:OnInitialize()
     self:InitDB()
     self.CharDB.slayer1KillCount = self.CharDB.slayer1KillCount or 0
+    if self.CharDB.debugFakeLevel60 == nil then
+        self.CharDB.debugFakeLevel60 = false
+    end
     self:RegisterChatCommand("hc", "HandleSlash")
     if self.CraftedLockOnInitialize then
         self:CraftedLockOnInitialize()
@@ -56,12 +60,40 @@ end
 --[[ 
     Функция: обработка команды /hc
 ]]
+local function strtrim(s)
+    return (s or ""):gsub("^%s+", ""):gsub("%s+$", "")
+end
+
 function addon:HandleSlash(input)
-    if input == "reset" then
+    local raw = strtrim(input or "")
+    if raw == "" then
+        print("|cFFFFCC00[HC]|r Commands:")
+        print("/hc reset — reset current character data")
+        print("/hc hub — open Account Hub")
+        print("/hc hubreset — reset account hub (all chars)")
+        print("/hc debug60 — treat as level 60 for hub (debug)")
+        print("/hc debug60reset — clear debug 60 flag")
+        return
+    end
+
+    local cmd, _ = strsplit(" ", raw, 2)
+    cmd = strlower(cmd or "")
+
+    if cmd == "reset" then
         self:ResetCharacter()
+    elseif cmd == "hub" then
+        self.UI:ShowHub()
+    elseif cmd == "hubreset" then
+        self:HubReset()
+    elseif cmd == "debug60" then
+        self.CharDB.debugFakeLevel60 = true
+        self:SyncAccountHubFromCharacter()
+        print("|cFF00FF00[HC]|r Debug: hub treats this character as level 60.")
+    elseif cmd == "debug60reset" then
+        self.CharDB.debugFakeLevel60 = false
+        print("|cFF00FF00[HC]|r Debug level 60 flag cleared.")
     else
-        print("|cFFFF0000[HC]|r Commands:")
-        print("/hc reset - reset current character data")
+        print("|cFFFFCC00[HC]|r Unknown command. Use /hc for help.")
     end
 end
 
@@ -77,6 +109,7 @@ function addon:ResetCharacter()
     db.craftedAllowedKeys = {}
     db.partnerGiftedKeys = {}
     db.slayer1KillCount = 0
+    db.debugFakeLevel60 = false
 
     print("|cFFFF0000[Hardcore Challenges]|r Character data reset!")
 
@@ -90,6 +123,10 @@ function addon:ResetCharacter()
         self.UI.activeWindow:Hide()
         self.UI.activeWindow:SetParent(nil)
         self.UI.activeWindow = nil
+    end
+
+    if self.UI.hubWindow then
+        self.UI.hubWindow:Hide()
     end
 end
 
@@ -106,6 +143,9 @@ function addon:OnEnable()
     end
     if self.SlayerOnEnable then
         self:SlayerOnEnable()
+    end
+    if self.HubOnEnable then
+        self:HubOnEnable()
     end
 
     if self.CharDB.characterStarted then

@@ -3,7 +3,7 @@
 ## Notes: Challenges for WoW Classic
 ## Version: 1.0.0
 ## Author: YourBruh
-## SavedVariables: HardcoreChallengesDB
+## SavedVariables: HardcoreChallengesDB, HardcoreChallengesHubDB
 
 # ===== LIBS =====
 libs\LibDBIcon-1.0\LibStub\LibStub.lua
@@ -25,9 +25,11 @@ core\single_spec.lua
 core\crafted_lock.lua
 core\events.lua
 core\state.lua
+core\hub.lua
 
 # ===== UI =====
 ui\chrome.lua
 ui\active_challenges.lua
+ui\hub_frame.lua
 ui\main_frame.lua
 ui\minimap_button.lua

@@ -13,6 +13,10 @@ function addon:HubEnsure()
 end
 
 local META_KEY = "MetaAllChallenges"
+local EXCLUDE_FROM_AUTO_60 = {
+    LordOfTheRings = true,
+    ScarletTabard = true,
+}
 
 function addon:HubMetaChallengeKey()
     return META_KEY
@@ -92,9 +96,18 @@ function addon:ProcessHubLevel60Completions()
     if UnitLevel("player") < 60 and not db.debugFakeLevel60 then return end
 
     local slayerKey = self.SlayerChallengeKey
+    local faction = UnitFactionGroup("player")
     for key in pairs(self.Challenges) do
-        if key ~= slayerKey then
-            if db.activeChallenges[key] and not db.failedChallenges[key] then
+        if key ~= slayerKey and not EXCLUDE_FROM_AUTO_60[key] then
+            if key == "Level60Horde" then
+                if db.activeChallenges[key] and not db.failedChallenges[key] and faction == "Horde" then
+                    self:HubTryAddCompletion(key)
+                end
+            elseif key == "Level60Alliance" then
+                if db.activeChallenges[key] and not db.failedChallenges[key] and faction == "Alliance" then
+                    self:HubTryAddCompletion(key)
+                end
+            elseif db.activeChallenges[key] and not db.failedChallenges[key] then
                 self:HubTryAddCompletion(key)
             end
         end

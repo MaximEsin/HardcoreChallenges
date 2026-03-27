@@ -14,6 +14,8 @@ local UI = addon.UI
 local SELF_FOUND_SPELL_ID = 431567
 local LOTR_KEY = "LordOfTheRings"
 local LOTR_RING_ITEM_ID = 8350
+local SCARLET_TABARD_KEY = "ScarletTabard"
+local SCARLET_TABARD_ITEM_ID = 23192
 local lastKnownRingCount = 0
 local GetSubZoneTextSafe = _G.GetSubZoneText
 local GetRealZoneTextSafe = _G.GetRealZoneText
@@ -160,6 +162,21 @@ local function CheckLordOfTheRingsFromBags(isInit)
     end
 end
 
+local function CheckScarletTabardChallenge()
+    local db = addon.CharDB
+    if not db.characterStarted then return end
+    if not db.activeChallenges[SCARLET_TABARD_KEY] or db.failedChallenges[SCARLET_TABARD_KEY] then return end
+    local tabardSlot = INVSLOT_TABARD or 19
+    local link = GetInventoryItemLink("player", tabardSlot)
+    local itemID = GetItemIdFromLink(link)
+    if itemID ~= SCARLET_TABARD_ITEM_ID then return end
+    addon:HubTryAddCompletion(SCARLET_TABARD_KEY)
+    if UI and UI.UpdateActive then
+        UI:UpdateActive()
+    end
+    UIErrorsFrame:AddMessage("Scarlet Tabard challenge complete!", 0, 1, 0)
+end
+
 -- =========================
 -- 💀 HARDCORE (смерть = провал)
 -- =========================
@@ -267,6 +284,7 @@ function addon:RunEnteringWorldChallengeChecks()
         CheckSelfFound()
         CheckSingleContinent()
         CheckLordOfTheRingsFromBags(true)
+        CheckScarletTabardChallenge()
     end
     run()
     if C_Timer and C_Timer.After then
@@ -284,4 +302,8 @@ end)
 
 addon:RegisterEvent("BAG_UPDATE_DELAYED", function()
     CheckLordOfTheRingsFromBags(false)
+end)
+
+addon:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", function()
+    CheckScarletTabardChallenge()
 end)

@@ -34,6 +34,8 @@ local IsMountedSafe = _G.IsMounted
 local IsInInstanceSafe = _G.IsInInstance
 local GetInstanceInfoSafe = _G.GetInstanceInfo
 local INVSLOT_TABARD_SAFE = _G.INVSLOT_TABARD or 19
+local IsQuestFlaggedCompletedSafe = _G.IsQuestFlaggedCompleted
+local C_QuestLogSafe = _G.C_QuestLog
 
 function addon:HasSelfFoundBuff()
     if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
@@ -185,6 +187,43 @@ local function CheckScarletTabardChallenge()
         UI:UpdateActive()
     end
     UIErrorsFrame:AddMessage("Scarlet Tabard challenge complete!", 0, 1, 0)
+end
+
+local function IsQuestCompletedById(questId)
+    if not questId then return false end
+    if C_QuestLogSafe and C_QuestLogSafe.IsQuestFlaggedCompleted then
+        local ok, done = pcall(C_QuestLogSafe.IsQuestFlaggedCompleted, questId)
+        if ok and done then return true end
+    end
+    if IsQuestFlaggedCompletedSafe then
+        local ok, done = pcall(IsQuestFlaggedCompletedSafe, questId)
+        if ok and done then return true end
+    end
+    return false
+end
+
+--- Квесты → зачёт в хаб (не на 60): turnedInQuestId = nil при PEW, иначе id квеста из QUEST_TURNED_IN.
+local QUEST_HUB_CHALLENGES = {
+    { key = "InDreams", questId = 5944, msg = "In Dreams challenge complete!" },
+    { key = "OnyxiaAttuneHorde", questId = 6602, msg = "Onyxia Attunement (Horde) complete!" },
+    { key = "OnyxiaAttuneAlliance", questId = 6502, msg = "Onyxia Attunement (Alliance) complete!" },
+}
+
+local function CheckQuestHubChallenges(turnedInQuestId)
+    local db = addon.CharDB
+    if not db.characterStarted then return end
+    local turned = turnedInQuestId and tonumber(turnedInQuestId) or nil
+    for _, row in ipairs(QUEST_HUB_CHALLENGES) do
+        if db.activeChallenges[row.key] and not db.failedChallenges[row.key] then
+            local done = (turned and turned == row.questId) or (not turned and IsQuestCompletedById(row.questId))
+            if done then
+                local granted = addon:HubTryAddCompletion(row.key)
+                if granted then
+                    UIErrorsFrame:AddMessage(row.msg, 0, 1, 0)
+                end
+            end
+        end
+    end
 end
 
 local function InstanceTypeIsPartyDungeon(instanceType)
@@ -405,6 +444,7 @@ function addon:RunEnteringWorldChallengeChecks()
         CheckSingleContinent()
         CheckLordOfTheRingsFromBags(true)
         CheckScarletTabardChallenge()
+        CheckQuestHubChallenges(nil)
         ScheduleDungeonOnceCheck()
         CheckNoMountChallenge()
     end
@@ -429,4 +469,8 @@ end)
 
 addon:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", function()
     CheckScarletTabardChallenge()
+end)
+
+addon:RegisterEvent("QUEST_TURNED_IN", function(_, questId)
+    CheckQuestHubChallenges(questId)
 end)

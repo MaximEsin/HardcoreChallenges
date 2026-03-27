@@ -326,6 +326,8 @@ UI.CHALLENGE_CATEGORY_ORDER = {
     "Lore",
     "Restrictions",
     "Progression",
+    "Alliance",
+    "Horde",
     "Combat",
 }
 
@@ -333,6 +335,8 @@ UI.ChallengeCategoryLabel = {
     Lore = "Lore",
     Restrictions = "Restrictions",
     Progression = "Progression",
+    Alliance = "Alliance",
+    Horde = "Horde",
     Combat = "Combat",
 }
 

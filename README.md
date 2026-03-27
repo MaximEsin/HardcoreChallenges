@@ -7,8 +7,8 @@ It lets players pick rulesets, track progress/fail states, earn hub points, and 
 
 - Challenge selection and active challenge UI
 - Fail-state tracking for gameplay rules (Hardcore, No Bank, No Mail, etc.)
-- Progress challenge support (Slayer kills)
-- Account Hub with completed challenge points
+- Progress challenge support (Slayer kill count)
+- Account Hub with completed challenge points (each key counts once per account)
 - Display titles from completed challenges
 - Addon-message sync between players with the addon:
   - selected title
@@ -17,49 +17,71 @@ It lets players pick rulesets, track progress/fail states, earn hub points, and 
 
 ## Challenge categories (UI)
 
-Challenges are grouped in the selection and active windows:
+Challenges are grouped in the selection and active windows. Category order is defined in `ui/chrome.lua` (`CHALLENGE_CATEGORY_ORDER`):
 
-- **Lore** — story / world flavoured goals (expand here over time)
+- **Lore** — story / world goals (quests, items, locations)
 - **Restrictions** — economy, travel, and survival rules
-- **Progression** — builds, leveling, dungeon rules
+- **Progression** — builds, leveling paths, dungeon rules
+- **Alliance** — faction-specific Alliance goals (level 60 champion, Onyxia attunement)
+- **Horde** — faction-specific Horde goals (level 60 champion, Onyxia attunement)
 - **Combat** — kill-based goals
 
-Add new challenges in `core/challenges.lua` with `category = "Lore"` (or another id from `UI.CHALLENGE_CATEGORY_ORDER` in `ui/chrome.lua`).
+Add new challenges in `core/challenges.lua` with `category` set to one of these ids (or extend the order/labels in `ui/chrome.lua`).
 
-## Current Challenges
+### Hub completion behavior
 
-- Hardcore
-- No Bank
-- No Mail
-- No Auction House
-- No Mount
-- No Hearthstone
-- Dungeon Once (each 5-man dungeon map only once per character)
-- Self Found
-- Single Continent
-- Crafted Locked (Solo / Duo)
-- Single Spec
-- Slayer
-- Lord of the Rings (destroy `item:8350` in Blackrock Mountain)
-- Scarlet Tabard (equip `item:23192`)
-- Horde Champion (reach level 60 on Horde)
-- Alliance Champion (reach level 60 on Alliance)
-- Meta: All Challenges (hub-only)
+- **Level 60:** For most active challenges, reaching level 60 on a started character grants hub credit (see `ProcessHubLevel60Completions` in `core/hub.lua`). Exceptions are listed in `EXCLUDE_FROM_AUTO_60` (they complete only when their special rule is met).
+- **Quest-based lore / attunement:** Completion is detected on **`QUEST_TURNED_IN`** and on login/entering world (`RunEnteringWorldChallengeChecks` in `core/events.lua`) via quest completion APIs, for:
+  - **In Dreams** — quest `5944`
+  - **Onyxia Attunement (Horde)** — quest `6602` (*Blood of the Black Dragon Champion*)
+  - **Onyxia Attunement (Alliance)** — quest `6502` (*Drakefire Amulet*)
+- **Level 60 faction champions:** `Level60Horde` / `Level60Alliance` still require the matching `UnitFactionGroup` when the level-60 hub pass runs.
+- **Slayer:** Hub credit when kill goal is reached (combat log), not automatically at 60.
+
+## Current challenges
+
+| Category | Challenge | Notes |
+|----------|-----------|--------|
+| **Restrictions** | Hardcore | Death fails the challenge |
+| | No Bank / No Mail / No Auction House | Using blocked services fails or is prevented |
+| | No Mount / No Hearthstone | Mount / Hearthstone spell fails |
+| | Self Found | Must keep Self-Found buff while active |
+| | Single Continent | Must stay on start continent |
+| **Progression** | Dungeon Once | Each 5-man dungeon map once; hub credit at 60 |
+| | Crafted Locked (Solo / Duo) | Craft-only equip rules |
+| | Single Spec | One talent tree only |
+| **Lore** | Lord of the Rings | Destroy ring item `8350` in Blackrock Mountain |
+| | Scarlet Tabard | Equip tabard item `23192` |
+| | In Dreams | Complete quest `5944` |
+| **Alliance** | Alliance Champion | Level 60 on Alliance |
+| | Onyxia Attunement (Alliance) | Complete quest `6502` |
+| **Horde** | Horde Champion | Level 60 on Horde |
+| | Onyxia Attunement (Horde) | Complete quest `6602` |
+| **Combat** | Slayer | 10 000 NPC kills (kill credit rules in `core/slayer.lua`) |
+| *(hub only)* | All Challenges (Paragon) | Meta: every other challenge completed in hub |
+
+## Slash commands
+
+`/hc` with no arguments lists help. Useful commands:
+
+- `/hc hub` — open Account Hub  
+- `/hc reset` — reset **current character** saved data (selection/UI state)  
+- `/hc hubreset` — clear **account** hub completions  
+- `/hc debug60`, `/hc debug60reset`, `/hc debugslayer` — debugging hub/slayer (see `core/init.lua`)
 
 ## Installation (manual)
 
 1. Download/clone this repository.
 2. Put the folder `HardcoreChallenges` into:
    - `World of Warcraft/_classic_era_/Interface/AddOns/`
-3. Make sure the final path is:
+3. Ensure the path:
    - `.../AddOns/HardcoreChallenges/HardcoreChallenges.toc`
-4. Start/restart the game and enable the addon.
+4. Enable the addon in the client.
 
-## Development Notes
+## Development notes
 
-- Project uses Ace3 and LibDBIcon.
-- Addon metadata is in `HardcoreChallenges.toc`.
-- Character/account data:
-  - `HardcoreChallengesDB`
-  - `HardcoreChallengesHubDB`
-
+- Ace3 + LibDBIcon.
+- Metadata: `HardcoreChallenges.toc`.
+- Saved variables:
+  - `HardcoreChallengesDB` — per-character profile (challenges, progress)
+  - `HardcoreChallengesHubDB` — account hub completed keys

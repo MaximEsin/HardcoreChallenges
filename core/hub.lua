@@ -16,6 +16,9 @@ local META_KEY = "MetaAllChallenges"
 local EXCLUDE_FROM_AUTO_60 = {
     LordOfTheRings = true,
     ScarletTabard = true,
+    InDreams = true,
+    OnyxiaAttuneHorde = true,
+    OnyxiaAttuneAlliance = true,
 }
 
 function addon:HubMetaChallengeKey()

@@ -13,7 +13,7 @@ local addon = HardcoreChallenges
         - points: очки
         - hubOnly: если true — только хаб (не в окне выбора / активных)
         - displayTitle: короткое звание для неймплейтов / тултипов (видно игрокам с аддоном)
-        - category: строковый id секции UI (см. ui/chrome.lua CHALLENGE_CATEGORY_ORDER); без поля = Progression
+        - category: строковый id секции UI (см. ui/chrome.lua CHALLENGE_CATEGORY_ORDER); без поля = Progression (Alliance / Horde — фракционные секции)
 ]]
 addon.Challenges = {
     ["Hardcore"] = {
@@ -142,6 +142,15 @@ addon.Challenges = {
         points = 5,
         category = "Lore",
     },
+    ["InDreams"] = {
+        name = "In Dreams",
+        displayTitle = "Dreamwalker",
+        description = "Complete quest 'In Dreams' (quest ID 5944).",
+        icon = "Interface\\Icons\\classicon_paladin",
+        enabledByDefault = false,
+        points = 5,
+        category = "Lore",
+    },
     ["Level60Horde"] = {
         name = "Horde Champion",
         displayTitle = "Horde Champion",
@@ -149,7 +158,16 @@ addon.Challenges = {
         icon = "Interface\\Icons\\INV_BannerPVP_01",
         enabledByDefault = false,
         points = 10,
-        category = "Progression",
+        category = "Horde",
+    },
+    ["OnyxiaAttuneHorde"] = {
+        name = "Onyxia Attunement (Horde)",
+        displayTitle = "Black Dragon Champion",
+        description = "Complete the Horde Onyxia chain — turn in «Blood of the Black Dragon Champion» (quest ID 6602).",
+        icon = "Interface\\Icons\\Achievement_Boss_Onyxia",
+        enabledByDefault = false,
+        points = 10,
+        category = "Horde",
     },
     ["Level60Alliance"] = {
         name = "Alliance Champion",
@@ -158,7 +176,16 @@ addon.Challenges = {
         icon = "Interface\\Icons\\INV_BannerPVP_02",
         enabledByDefault = false,
         points = 10,
-        category = "Progression",
+        category = "Alliance",
+    },
+    ["OnyxiaAttuneAlliance"] = {
+        name = "Onyxia Attunement (Alliance)",
+        displayTitle = "Drakefire",
+        description = "Complete the Alliance Onyxia chain — obtain «Drakefire Amulet» (quest ID 6502).",
+        icon = "Interface\\Icons\\Achievement_Boss_Onyxia",
+        enabledByDefault = false,
+        points = 10,
+        category = "Alliance",
     },
     ["Slayer1"] = {
         name = "Slayer",

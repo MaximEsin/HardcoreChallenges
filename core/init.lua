@@ -34,6 +34,8 @@ function addon:InitDB()
         slayer1KillCount = 0,
         debugFakeLevel60 = false,
         selectedDisplayTitleKey = nil,
+        dungeonOnceSeenMapIds = {},
+        dungeonOnceInsideMapId = nil,
     }
 
     self.DB = LibStub("AceDB-3.0"):New("HardcoreChallengesDB", { profile = defaults }, false)
@@ -48,6 +50,7 @@ end
 ]]
 function addon:OnInitialize()
     self:InitDB()
+    self.CharDB.dungeonOnceSeenMapIds = self.CharDB.dungeonOnceSeenMapIds or {}
     self.CharDB.slayer1KillCount = self.CharDB.slayer1KillCount or 0
     if self.CharDB.debugFakeLevel60 == nil then
         self.CharDB.debugFakeLevel60 = false
@@ -166,6 +169,8 @@ function addon:ResetCharacter()
     db.slayer1KillCount = 0
     db.debugFakeLevel60 = false
     db.selectedDisplayTitleKey = nil
+    db.dungeonOnceSeenMapIds = {}
+    db.dungeonOnceInsideMapId = nil
 
     print("|cFFFF0000[Hardcore Challenges]|r Character data reset!")
 

@@ -16,7 +16,13 @@ local LOTR_KEY = "LordOfTheRings"
 local LOTR_RING_ITEM_ID = 8350
 local SCARLET_TABARD_KEY = "ScarletTabard"
 local SCARLET_TABARD_ITEM_ID = 23192
+local NO_MOUNT_KEY = "NoMount"
+local NO_HEARTHSTONE_KEY = "NoHearthstone"
+local DUNGEON_ONCE_KEY = "DungeonOnce"
+-- Classic: Hearthstone (item) cast spell
+local HEARTHSTONE_SPELL_ID = 8690
 local lastKnownRingCount = 0
+local dungeonOnceDebounce
 local GetSubZoneTextSafe = _G.GetSubZoneText
 local GetRealZoneTextSafe = _G.GetRealZoneText
 local GetZoneTextSafe = _G.GetZoneText
@@ -24,6 +30,10 @@ local NUM_BAG_SLOTS_SAFE = _G.NUM_BAG_SLOTS or 4
 local GetContainerNumSlotsLegacy = _G.GetContainerNumSlots
 local GetContainerItemInfoLegacy = _G.GetContainerItemInfo
 local GetContainerItemLinkLegacy = _G.GetContainerItemLink
+local IsMountedSafe = _G.IsMounted
+local IsInInstanceSafe = _G.IsInInstance
+local GetInstanceInfoSafe = _G.GetInstanceInfo
+local INVSLOT_TABARD_SAFE = _G.INVSLOT_TABARD or 19
 
 function addon:HasSelfFoundBuff()
     if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
@@ -166,7 +176,7 @@ local function CheckScarletTabardChallenge()
     local db = addon.CharDB
     if not db.characterStarted then return end
     if not db.activeChallenges[SCARLET_TABARD_KEY] or db.failedChallenges[SCARLET_TABARD_KEY] then return end
-    local tabardSlot = INVSLOT_TABARD or 19
+    local tabardSlot = INVSLOT_TABARD_SAFE
     local link = GetInventoryItemLink("player", tabardSlot)
     local itemID = GetItemIdFromLink(link)
     if itemID ~= SCARLET_TABARD_ITEM_ID then return end
@@ -175,6 +185,116 @@ local function CheckScarletTabardChallenge()
         UI:UpdateActive()
     end
     UIErrorsFrame:AddMessage("Scarlet Tabard challenge complete!", 0, 1, 0)
+end
+
+local function InstanceTypeIsPartyDungeon(instanceType)
+    if instanceType == nil then return false end
+    if type(instanceType) == "number" then
+        return instanceType == 1
+    end
+    if type(instanceType) == "string" then
+        return strlower(instanceType) == "party"
+    end
+    return false
+end
+
+local function ScheduleDungeonOnceCheck()
+    local function run()
+        local db = addon.CharDB
+        if not db.characterStarted then return end
+        if not db.activeChallenges[DUNGEON_ONCE_KEY] or db.failedChallenges[DUNGEON_ONCE_KEY] then return end
+
+        local instPack = IsInInstanceSafe and { IsInInstanceSafe() } or {}
+        local inInst = instPack[1]
+        local instanceType = instPack[2]
+        if not inInst or not InstanceTypeIsPartyDungeon(instanceType) then
+            db.dungeonOnceInsideMapId = nil
+            return
+        end
+
+        local instanceMapId = select(8, GetInstanceInfoSafe and GetInstanceInfoSafe())
+        local mapID = (instanceMapId and instanceMapId > 0) and instanceMapId
+            or (C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player"))
+        if not mapID then return end
+
+        if db.dungeonOnceInsideMapId == mapID then
+            return
+        end
+
+        db.dungeonOnceSeenMapIds = db.dungeonOnceSeenMapIds or {}
+        if db.dungeonOnceSeenMapIds[mapID] then
+            db.failedChallenges[DUNGEON_ONCE_KEY] = true
+            UIErrorsFrame:AddMessage("Dungeon Once challenge failed (re-entered a dungeon)!", 1, 0, 0)
+            if UI.activeWindow then UI:UpdateActive() end
+            return
+        end
+        db.dungeonOnceSeenMapIds[mapID] = true
+        db.dungeonOnceInsideMapId = mapID
+    end
+
+    if C_Timer and C_Timer.NewTimer then
+        if dungeonOnceDebounce and dungeonOnceDebounce.Cancel then
+            dungeonOnceDebounce:Cancel()
+        end
+        dungeonOnceDebounce = C_Timer.NewTimer(0.45, function()
+            dungeonOnceDebounce = nil
+            run()
+        end)
+    else
+        run()
+    end
+end
+
+local function CheckNoMountChallenge()
+    local db = addon.CharDB
+    if not db.characterStarted then return end
+    if not db.activeChallenges[NO_MOUNT_KEY] or db.failedChallenges[NO_MOUNT_KEY] then return end
+    if IsMountedSafe and IsMountedSafe() then
+        db.failedChallenges[NO_MOUNT_KEY] = true
+        UIErrorsFrame:AddMessage("No Mount challenge failed!", 1, 0, 0)
+        if UI.activeWindow then UI:UpdateActive() end
+    end
+end
+
+local noMountPollAccum = 0
+if not addon._hcNoMountPollFrame then
+    local f = CreateFrame("Frame")
+    addon._hcNoMountPollFrame = f
+    f:SetScript("OnUpdate", function(_, elapsed)
+        local db = addon.CharDB
+        if not db.characterStarted or not db.activeChallenges[NO_MOUNT_KEY] or db.failedChallenges[NO_MOUNT_KEY] then
+            return
+        end
+        noMountPollAccum = noMountPollAccum + (elapsed or 0)
+        if noMountPollAccum < 0.35 then return end
+        noMountPollAccum = 0
+        CheckNoMountChallenge()
+    end)
+end
+
+-- UNIT_SPELLCAST_* через отдельный фрейм: AceEvent допускает один обработчик на событие на аддон
+-- (иначе перезапишем UNIT_SPELLCAST_SUCCEEDED из Crafted Lock).
+if not addon._hcMiscEventsFrame then
+    local mf = CreateFrame("Frame")
+    addon._hcMiscEventsFrame = mf
+    mf:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    mf:RegisterEvent("PLAYER_MOUNT_DISPLAY_CHANGED")
+    mf:SetScript("OnEvent", function(_, event, ...)
+        if event == "UNIT_SPELLCAST_SUCCEEDED" then
+            local unit, _, spellId = ...
+            if unit ~= "player" then return end
+            local db = addon.CharDB
+            if not db.characterStarted then return end
+            if not db.activeChallenges[NO_HEARTHSTONE_KEY] or db.failedChallenges[NO_HEARTHSTONE_KEY] then return end
+            if spellId == HEARTHSTONE_SPELL_ID then
+                db.failedChallenges[NO_HEARTHSTONE_KEY] = true
+                UIErrorsFrame:AddMessage("No Hearthstone challenge failed!", 1, 0, 0)
+                if UI.activeWindow then UI:UpdateActive() end
+            end
+        elseif event == "PLAYER_MOUNT_DISPLAY_CHANGED" then
+            CheckNoMountChallenge()
+        end
+    end)
 end
 
 -- =========================
@@ -285,6 +405,8 @@ function addon:RunEnteringWorldChallengeChecks()
         CheckSingleContinent()
         CheckLordOfTheRingsFromBags(true)
         CheckScarletTabardChallenge()
+        ScheduleDungeonOnceCheck()
+        CheckNoMountChallenge()
     end
     run()
     if C_Timer and C_Timer.After then
@@ -298,6 +420,7 @@ end)
 
 addon:RegisterEvent("ZONE_CHANGED_NEW_AREA", function()
     CheckSingleContinent()
+    ScheduleDungeonOnceCheck()
 end)
 
 addon:RegisterEvent("BAG_UPDATE_DELAYED", function()

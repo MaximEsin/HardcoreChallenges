@@ -204,6 +204,13 @@ function UI:ShowActive()
                 else
                     extra = "\n|cFFFF0000Points in " .. st.treeCount .. " trees|r"
                 end
+            elseif not isRemote and key == "DungeonOnce" then
+                local seen = db.dungeonOnceSeenMapIds or {}
+                local n = 0
+                for _ in pairs(seen) do
+                    n = n + 1
+                end
+                extra = "\n|cFFFFFF00Unique dungeons entered: " .. n .. "|r"
             end
 
             local status = (not isRemote) and db.failedChallenges[key]

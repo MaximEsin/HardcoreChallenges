@@ -93,6 +93,7 @@ function UI:ShowSelection()
         bodyFs:SetPoint("TOPLEFT", titleFs, "BOTTOMLEFT", 0, -4)
         bodyFs:SetWidth(row:GetWidth() - 130)
         bodyFs:SetJustifyH("LEFT")
+        bodyFs:SetWordWrap(true)
         self.SafeSetFont(bodyFs, fontPath, 12, "GameFontHighlightSmall")
         bodyFs:SetTextColor(r0, g0, b0)
 
@@ -172,7 +173,7 @@ function UI:ShowSelection()
         row._checkbox = cb
         row._buildBodyText = buildBodyText
 
-        local rowH = math.max(56, titleFs:GetStringHeight() + bodyFs:GetStringHeight() + 20)
+        local rowH = math.max(56, titleFs:GetStringHeight() + bodyFs:GetStringHeight() + 28)
         row:SetHeight(rowH)
         row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
         y = y - rowH - 10

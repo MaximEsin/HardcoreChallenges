@@ -21,6 +21,9 @@ It lets players pick rulesets, track progress/fail states, earn hub points, and 
 - No Bank
 - No Mail
 - No Auction House
+- No Mount
+- No Hearthstone
+- Dungeon Once (each 5-man dungeon map only once per character)
 - Self Found
 - Single Continent
 - Crafted Locked (Solo / Duo)

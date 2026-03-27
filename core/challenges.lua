@@ -53,7 +53,7 @@ addon.Challenges = {
         description = "Have self found buff active until lvl 60",
         icon = "Interface\\Icons\\ui_selffound",
         enabledByDefault = false,
-        points = 10,
+        points = 30,
     },
     ["SingleContinent"] = {
         name = "Single Continent",
@@ -61,7 +61,7 @@ addon.Challenges = {
         description = "You may not leave the continent you have spawned on",
         icon = "Interface\\Icons\\spell_arcane_portalundercity",
         enabledByDefault = false,
-        points = 30,
+        points = 50,
     },
     ["CraftedLockedSolo"] = {
         name = "Crafted Locked (Solo)",
@@ -69,7 +69,7 @@ addon.Challenges = {
         description = "Start naked. You may only equip armor, weapons, and bags that you crafted yourself. Other items cannot be worn.",
         icon = "Interface\\Icons\\Trade_Engineering",
         enabledByDefault = false,
-        points = 25,
+        points = 50,
     },
     ["CraftedLockedDuo"] = {
         name = "Crafted Locked (Duo)",
@@ -77,7 +77,7 @@ addon.Challenges = {
         description = "Same as solo, but you may also equip gear your linked partner traded to you (both must run the addon and set each other as partners). Other looted or bought gear is never allowed.",
         icon = "Interface\\Icons\\inv_gizmo_02",
         enabledByDefault = false,
-        points = 25,
+        points = 35,
     },
     ["SingleSpec"] = {
         name = "Single Spec",
@@ -85,7 +85,7 @@ addon.Challenges = {
         description = "Spend talent points in only one talent tree. Any points in a second tree fails the challenge (talents unlock at level 10).",
         icon = "Interface\\Icons\\Ability_Marksmanship",
         enabledByDefault = false,
-        points = 20,
+        points = 30,
     },
     ["LordOfTheRings"] = {
         name = "Lord of the Rings",
@@ -93,7 +93,7 @@ addon.Challenges = {
         description = "Destroy The 1 ring while standing in Blackrock Mountain.",
         icon = "Interface\\Icons\\INV_Jewelry_Ring_03",
         enabledByDefault = false,
-        points = 10,
+        points = 5,
     },
     ["ScarletTabard"] = {
         name = "Scarlet Tabard",

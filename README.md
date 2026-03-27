@@ -78,6 +78,32 @@ Add new challenges in `core/challenges.lua` with `category` set to one of these 
    - `.../AddOns/HardcoreChallenges/HardcoreChallenges.toc`
 4. Enable the addon in the client.
 
+## Packaging for uploads (CurseForge, WoWInterface, etc.)
+
+Hosts often reject zips that contain **`__MACOSX/`**, **`._*`** (macOS metadata), **`.git/`**, or **`.vscode/`**.  
+That happens if you use **Finder → Compress** on a folder that is also a git checkout.
+
+**Option A — script (recommended on macOS):** from the addon folder:
+
+```bash
+chmod +x scripts/make-release-zip.sh
+./scripts/make-release-zip.sh
+```
+
+This writes `HardcoreChallenges-release.zip` next to the addon (one top-level folder `HardcoreChallenges/` with `HardcoreChallenges.toc` inside).
+
+**Option B — GitHub:** **Code → Download ZIP** gives an archive **without `.git`**, but re-compressing on Mac can still add `__MACOSX`. Prefer the script or terminal `zip` with `COPYFILE_DISABLE=1`.
+
+**Option C — manual `zip` from the parent of the addon:**
+
+```bash
+cd …/Interface/AddOns
+COPYFILE_DISABLE=1 zip -r ~/Desktop/HardcoreChallenges.zip HardcoreChallenges \
+  -x "HardcoreChallenges/.git/*" \
+  -x "*__MACOSX*" \
+  -x "*.DS_Store"
+```
+
 ## Development notes
 
 - Ace3 + LibDBIcon.

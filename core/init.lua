@@ -122,7 +122,7 @@ function addon:OnEnable()
         self:EnsureMinimapButton()
     end
 
-    if self.CharDB.characterStarted and self:IsChallengeConfigureLevel() then
+    if self.CharDB.characterStarted then
         self.UI:ShowActive()
     end
 end

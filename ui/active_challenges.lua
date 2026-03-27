@@ -6,20 +6,11 @@ local VIEW_SELF = "self"
 local VIEW_TARGET = "target"
 local UnitIsUnitSafe = _G.UnitIsUnit
 
-local function GetCurrentContinent()
-    local mapID = C_Map.GetBestMapForUnit("player")
-    if not mapID then return nil end
-
-    local info = C_Map.GetMapInfo(mapID)
-    if not info then return nil end
-
-    return info.parentMapID or mapID
-end
-
 function UI:ShowActive()
-    if not addon:IsChallengeConfigureLevel() then
+    local db = addon.CharDB
+    if not db.characterStarted then
         UIErrorsFrame:AddMessage(
-            "Hardcore Challenges: the active challenges window is only available at level 1. Use the minimap to open the Account Hub.",
+            "Hardcore Challenges: no challenge run in progress. Start a run at level 1 (minimap on a level 1 character).",
             1, 1, 0
         )
         return
@@ -214,7 +205,7 @@ function UI:ShowActive()
                     pts = "|cFFFFFF00+" .. challenge.points .. " points (at " .. goal .. " kills)|r"
                 end
             elseif not isRemote and key == "SingleContinent" then
-                local currentID = GetCurrentContinent()
+                local currentID = addon:GetPlayerContinentMapId()
                 local currentName = currentID and addon:GetContinentName(currentID) or "Unknown"
                 local startName = db.startContinent and addon:GetContinentName(db.startContinent) or "Unknown"
 

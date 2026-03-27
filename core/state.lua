@@ -44,3 +44,20 @@ function addon:GetContinentName(mapID)
 
     return info.name or "Unknown"
 end
+
+--- Open-world continent map id for the player (nil in instances / while map not ready).
+--- parentMapID 0 must not be used: in Lua `(0 or mapID)` is 0 and breaks continent compare.
+function addon:GetPlayerContinentMapId()
+    local mapID = C_Map.GetBestMapForUnit("player")
+    if not mapID then return nil end
+    local info = C_Map.GetMapInfo(mapID)
+    if not info then return nil end
+    if Enum.UIMapType and info.mapType == Enum.UIMapType.Instance then
+        return nil
+    end
+    local p = info.parentMapID
+    if p and p ~= 0 then
+        return p
+    end
+    return mapID
+end

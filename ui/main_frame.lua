@@ -7,16 +7,6 @@ local function strtrim(s)
     return (s or ""):gsub("^%s+", ""):gsub("%s+$", "")
 end
 
-local function GetContinent()
-    local mapID = C_Map.GetBestMapForUnit("player")
-    if not mapID then return nil end
-
-    local info = C_Map.GetMapInfo(mapID)
-    if not info then return nil end
-
-    return info.parentMapID or mapID
-end
-
 function UI:ShowSelection()
     if not addon:IsChallengeConfigureLevel() then
         UIErrorsFrame:AddMessage(
@@ -135,7 +125,7 @@ function UI:ShowSelection()
                     pts = "|cFFFFFF00+" .. challenge.points .. " points (at " .. goal .. " kills)|r"
                 end
             elseif key == "SingleContinent" then
-                local currentID = GetContinent()
+                local currentID = addon:GetPlayerContinentMapId()
                 local currentName = currentID and addon:GetContinentName(currentID) or "Unknown"
 
                 if db.startContinent then
@@ -302,7 +292,7 @@ function UI:ShowSelection()
         end
 
         if db.activeChallenges["SingleContinent"] then
-            db.startContinent = GetContinent()
+            db.startContinent = addon:GetPlayerContinentMapId()
         end
 
         if addon.SingleSpecOnChallengeStart then

@@ -55,19 +55,8 @@ function addon:HasSelfFoundBuff()
     return false
 end
 
---[[ 
-    Получение текущего континента игрока (игнорируем инстансы)
-]]
 local function GetContinent()
-    local mapID = C_Map.GetBestMapForUnit("player")
-    if not mapID then return nil end
-
-    local info = C_Map.GetMapInfo(mapID)
-    if not info then return nil end
-
-    if info.mapType == Enum.UIMapType.Instance then return nil end
-
-    return info.parentMapID or mapID
+    return addon:GetPlayerContinentMapId()
 end
 
 local function IsBlackrockMountain()
@@ -427,6 +416,12 @@ local function CheckSingleContinent()
     local current = GetContinent()
     if not current then return end
 
+    -- Legacy bug: `parentMapID or mapID` treated 0 as valid continent id (Lua: 0 is truthy).
+    if db.startContinent == 0 then
+        db.startContinent = current
+        return
+    end
+
     if current ~= db.startContinent then
         db.failedChallenges["SingleContinent"] = true
         UIErrorsFrame:AddMessage("Single Continent challenge failed!", 1, 0, 0)
@@ -439,18 +434,25 @@ end
 -- =========================
 -- PEW регистрируется в core/titles.lua (AceEvent: один обработчик PLAYER_ENTERING_WORLD на аддон).
 function addon:RunEnteringWorldChallengeChecks()
-    local function run()
+    -- Self Found + Single Continent: never fail on the first PEW tick — auras/map data are often stale until a moment later.
+    local function runStableChecks()
         CheckSelfFound()
         CheckSingleContinent()
+    end
+    local function runImmediate()
         CheckLordOfTheRingsFromBags(true)
         CheckScarletTabardChallenge()
         CheckQuestHubChallenges(nil)
         ScheduleDungeonOnceCheck()
         CheckNoMountChallenge()
     end
-    run()
+    runImmediate()
     if C_Timer and C_Timer.After then
-        C_Timer.After(0, run)
+        C_Timer.After(0, runImmediate)
+        C_Timer.After(0.75, runStableChecks)
+        C_Timer.After(2.5, runStableChecks)
+    else
+        runStableChecks()
     end
 end
 

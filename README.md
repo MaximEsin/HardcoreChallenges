@@ -62,8 +62,9 @@ Add new challenges in `core/challenges.lua` with `category` set to one of these 
 
 ## Level 1 rule
 
-- **Choosing challenges** and the **Active Challenges** window (including the **Titles** tab) are only available while your character is **level 1**.
-- From **level 2 onward**, the **minimap button** opens only the **Account Hub** (account points and completions). Challenge logic still runs in the background.
+- **Choosing challenges** and pressing **Start** are only allowed at **level 1** (new run).
+- **Active Challenges** (progress, failures, **Titles** tab) opens from the **minimap on any level** once a run has been started.
+- If you are **above level 1** and **never started**, the minimap opens **Account Hub** only (you cannot begin a run mid-level).
 - **Reset character** / **Reset hub** are in the Hub footer (with confirmation dialogs).
 
 ## Installation (manual)

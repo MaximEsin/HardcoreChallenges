@@ -166,9 +166,6 @@ function addon:HubOnEnable()
     f:RegisterEvent("PLAYER_ENTERING_WORLD")
     f:SetScript("OnEvent", function(_, event, newLevel)
         if event == "PLAYER_LEVEL_UP" then
-            if type(newLevel) == "number" and newLevel >= 2 and addon.UI and addon.UI.HideChallengeWindows then
-                addon.UI:HideChallengeWindows()
-            end
             addon:ProcessHubLevel60Completions({ newLevelHint = newLevel })
             if C_Timer and C_Timer.After then
                 C_Timer.After(0, function()

@@ -393,12 +393,3 @@ function UI.SortedChallengeKeys()
 end
 
 UI.SafeSetFont = SafeSetFont
-
-function UI:HideChallengeWindows()
-    if self.selectionWindow then
-        self.selectionWindow:Hide()
-    end
-    if self.activeWindow then
-        self.activeWindow:Hide()
-    end
-end

@@ -33,6 +33,10 @@ function addon:EnsureMinimapButton()
             icon = "Interface\\Icons\\ability_creature_cursed_02",
             text = "Hardcore Challenges",
             OnClick = function()
+                if not addon:IsChallengeConfigureLevel() then
+                    UI:ShowHub()
+                    return
+                end
                 local db = addon.CharDB
                 if not db then return end
                 local anySelected = false
@@ -47,7 +51,11 @@ function addon:EnsureMinimapButton()
             end,
             OnTooltipShow = function(tt)
                 tt:AddLine("Hardcore Challenges")
-                tt:AddLine("Click to open", 1, 1, 1)
+                if addon:IsChallengeConfigureLevel() then
+                    tt:AddLine("Click to choose or view active challenges", 1, 1, 1)
+                else
+                    tt:AddLine("Click to open Account Hub", 1, 1, 1)
+                end
             end,
         })
         if not iconObject and LDB.GetDataObjectByName then

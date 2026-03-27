@@ -60,14 +60,11 @@ Add new challenges in `core/challenges.lua` with `category` set to one of these 
 | **Combat** | Slayer | 10 000 NPC kills (kill credit rules in `core/slayer.lua`) |
 | *(hub only)* | All Challenges (Paragon) | Meta: every other challenge completed in hub |
 
-## Slash commands
+## Level 1 rule
 
-`/hc` with no arguments lists help. Useful commands:
-
-- `/hc hub` — open Account Hub  
-- `/hc reset` — reset **current character** saved data (selection/UI state)  
-- `/hc hubreset` — clear **account** hub completions  
-- `/hc debug60`, `/hc debug60reset`, `/hc debugslayer` — debugging hub/slayer (see `core/init.lua`)
+- **Choosing challenges** and the **Active Challenges** window (including the **Titles** tab) are only available while your character is **level 1**.
+- From **level 2 onward**, the **minimap button** opens only the **Account Hub** (account points and completions). Challenge logic still runs in the background.
+- **Reset character** / **Reset hub** are in the Hub footer (with confirmation dialogs).
 
 ## Installation (manual)
 

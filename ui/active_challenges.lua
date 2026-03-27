@@ -17,6 +17,14 @@ local function GetCurrentContinent()
 end
 
 function UI:ShowActive()
+    if not addon:IsChallengeConfigureLevel() then
+        UIErrorsFrame:AddMessage(
+            "Hardcore Challenges: the active challenges window is only available at level 1. Use the minimap to open the Account Hub.",
+            1, 1, 0
+        )
+        return
+    end
+
     if self.activeWindow then
         self:UpdateActive()
         self.activeWindow:Show()

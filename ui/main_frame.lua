@@ -18,6 +18,14 @@ local function GetContinent()
 end
 
 function UI:ShowSelection()
+    if not addon:IsChallengeConfigureLevel() then
+        UIErrorsFrame:AddMessage(
+            "Hardcore Challenges: you can only choose challenges at level 1. Open the Account Hub from the minimap.",
+            1, 1, 0
+        )
+        return
+    end
+
     local db = addon.CharDB
 
     if self.selectionWindow then
@@ -264,6 +272,10 @@ function UI:ShowSelection()
     startBtn:SetPoint("RIGHT", foot, "RIGHT", -18, 10)
     startBtn:SetText("Start")
     startBtn:SetScript("OnClick", function()
+        if not addon:IsChallengeConfigureLevel() then
+            UIErrorsFrame:AddMessage("Hardcore Challenges: starting a run is only allowed at level 1.", 1, 0, 0)
+            return
+        end
         local crafted = db.activeChallenges["CraftedLockedSolo"] or db.activeChallenges["CraftedLockedDuo"]
         if crafted then
             if not addon:CraftedLockIsNakedForStart() then

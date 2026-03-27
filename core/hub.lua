@@ -95,7 +95,7 @@ function addon:HubReset()
     print("|cFFFFCC00[HC]|r Account hub cleared.")
 end
 
--- Non-Slayer challenges: active, not failed, character started, level 60 (or debug flag).
+-- Non-Slayer challenges: active, not failed, character started, level 60.
 -- opts.newLevelHint: from PLAYER_LEVEL_UP arg; UnitLevel("player") can still be <60 in the same callback.
 function addon:ProcessHubLevel60Completions(opts)
     opts = opts or {}
@@ -104,7 +104,7 @@ function addon:ProcessHubLevel60Completions(opts)
     db.activeChallenges = db.activeChallenges or {}
     db.failedChallenges = db.failedChallenges or {}
     local hinted60 = type(opts.newLevelHint) == "number" and opts.newLevelHint >= 60
-    if UnitLevel("player") < 60 and not db.debugFakeLevel60 and not hinted60 then
+    if UnitLevel("player") < 60 and not hinted60 then
         return
     end
 
@@ -166,6 +166,9 @@ function addon:HubOnEnable()
     f:RegisterEvent("PLAYER_ENTERING_WORLD")
     f:SetScript("OnEvent", function(_, event, newLevel)
         if event == "PLAYER_LEVEL_UP" then
+            if type(newLevel) == "number" and newLevel >= 2 and addon.UI and addon.UI.HideChallengeWindows then
+                addon.UI:HideChallengeWindows()
+            end
             addon:ProcessHubLevel60Completions({ newLevelHint = newLevel })
             if C_Timer and C_Timer.After then
                 C_Timer.After(0, function()

@@ -3,6 +3,35 @@
 local addon = HardcoreChallenges
 local UI = addon.UI
 
+local function RegisterHCStaticPopupsOnce()
+    if addon._hcStaticPopupsRegistered then return end
+    addon._hcStaticPopupsRegistered = true
+    StaticPopupDialogs["HC_RESET_CHARACTER"] = {
+        text = "Clear all challenge data for this character? You can only pick challenges again on a level 1 character.",
+        button1 = YES,
+        button2 = NO,
+        OnAccept = function()
+            addon:ResetCharacter()
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
+    StaticPopupDialogs["HC_RESET_HUB"] = {
+        text = "Clear ALL account hub completions for this Battle.net account? This cannot be undone.",
+        button1 = YES,
+        button2 = NO,
+        OnAccept = function()
+            addon:HubReset()
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
+end
+
 local META_KEY = "MetaAllChallenges"
 local VIEW_SELF = "self"
 local VIEW_TARGET = "target"
@@ -41,6 +70,7 @@ function UI:RefreshHub()
 end
 
 function UI:ShowHub()
+    RegisterHCStaticPopupsOnce()
     if self.hubWindow then
         self:RefreshHub()
         self.hubWindow:Show()
@@ -72,9 +102,25 @@ function UI:ShowHub()
     local tr, tg, tb = self.GetPlayerClassColor()
 
     local totalLabel = foot:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-    totalLabel:SetPoint("CENTER", foot, "CENTER", 0, 6)
+    totalLabel:SetPoint("TOP", foot, "TOP", 0, -10)
     UI.SafeSetFont(totalLabel, fontPath, 18, "GameFontHighlightLarge")
     root._totalLabel = totalLabel
+
+    local resetCharBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
+    resetCharBtn:SetSize(118, 22)
+    resetCharBtn:SetPoint("BOTTOMLEFT", foot, "BOTTOMLEFT", 10, 10)
+    resetCharBtn:SetText("Reset character")
+    resetCharBtn:SetScript("OnClick", function()
+        StaticPopup_Show("HC_RESET_CHARACTER")
+    end)
+
+    local resetHubBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
+    resetHubBtn:SetSize(118, 22)
+    resetHubBtn:SetPoint("LEFT", resetCharBtn, "RIGHT", 6, 0)
+    resetHubBtn:SetText("Reset hub")
+    resetHubBtn:SetScript("OnClick", function()
+        StaticPopup_Show("HC_RESET_HUB")
+    end)
 
     function root._layoutHub()
         local contentFrame = root._content
@@ -203,7 +249,7 @@ function UI:ShowHub()
 
     local viewBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
     viewBtn:SetSize(96, 22)
-    viewBtn:SetPoint("RIGHT", foot, "RIGHT", -14, 6)
+    viewBtn:SetPoint("BOTTOMRIGHT", foot, "BOTTOMRIGHT", -14, 10)
     root._hubViewBtn = viewBtn
 
     local function accountPointsFromHubMap(hubMap)

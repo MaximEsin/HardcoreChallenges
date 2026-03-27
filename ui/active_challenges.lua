@@ -135,9 +135,35 @@ function UI:ShowActive()
         end
 
         local y = -6
-        local order = UI.SortedChallengeKeys()
+        local sections = UI.GetChallengeSections()
 
-        for _, key in ipairs(order) do
+        for _, sec in ipairs(sections) do
+            local anyInSec = false
+            for _, k in ipairs(sec.keys) do
+                if activeMap[k] then
+                    anyInSec = true
+                    break
+                end
+            end
+            if not anyInSec then
+                -- skip whole category
+            else
+            local hdr = CreateFrame("Frame", nil, contentFrame)
+            hdr:SetWidth(contentFrame:GetWidth() > 0 and contentFrame:GetWidth() or 400)
+            hdr._isCategoryHeader = true
+            local hdrFs = hdr:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+            hdrFs:SetPoint("TOPLEFT", hdr, "TOPLEFT", 6, -4)
+            hdrFs:SetWidth(hdr:GetWidth() - 12)
+            hdrFs:SetJustifyH("LEFT")
+            UI.SafeSetFont(hdrFs, fontPath, 14, "GameFontNormalLarge")
+            hdrFs:SetTextColor(0.9, 0.75, 0.3)
+            hdrFs:SetText(sec.title)
+            local hh = math.max(22, hdrFs:GetStringHeight() + 8)
+            hdr:SetHeight(hh)
+            hdr:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 0, y)
+            y = y - hh - 2
+
+        for _, key in ipairs(sec.keys) do
             if activeMap[key] then
             local challenge = addon.Challenges[key]
             if challenge then
@@ -214,9 +240,17 @@ function UI:ShowActive()
             end
 
             local status = (not isRemote) and db.failedChallenges[key]
+            local hubDone
+            if isRemote then
+                hubDone = profile and profile.hubCompletedKeys and profile.hubCompletedKeys[key]
+            else
+                hubDone = addon:HubEnsure().completedKeys[key] and true or false
+            end
             local statusStr
             if status then
                 statusStr = "|cFFFF4444Failed|r"
+            elseif hubDone then
+                statusStr = "|cFF66FF66Complete|r"
             elseif not isRemote and addon.IsSlayerChallengeKey and addon:IsSlayerChallengeKey(key) then
                 local cur = select(1, addon:GetSlayerProgressDisplay(key))
                 local goal = addon.GetSlayerGoal and addon:GetSlayerGoal() or 10000
@@ -232,6 +266,8 @@ function UI:ShowActive()
             y = y - rowH - 10
 
             end
+            end
+        end
             end
         end
 

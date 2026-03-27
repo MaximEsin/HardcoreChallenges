@@ -15,6 +15,17 @@ It lets players pick rulesets, track progress/fail states, earn hub points, and 
   - active selected challenges
   - completed hub challenges
 
+## Challenge categories (UI)
+
+Challenges are grouped in the selection and active windows:
+
+- **Lore** — story / world flavoured goals (expand here over time)
+- **Restrictions** — economy, travel, and survival rules
+- **Progression** — builds, leveling, dungeon rules
+- **Combat** — kill-based goals
+
+Add new challenges in `core/challenges.lua` with `category = "Lore"` (or another id from `UI.CHALLENGE_CATEGORY_ORDER` in `ui/chrome.lua`).
+
 ## Current Challenges
 
 - Hardcore

@@ -56,6 +56,9 @@ function addon:HubTryAddCompletion(key)
     if self.UI and self.UI.RefreshTitlesTab then
         self.UI:RefreshTitlesTab()
     end
+    if self.UI and self.UI.UpdateActive then
+        self.UI:UpdateActive()
+    end
     return true
 end
 
@@ -90,10 +93,17 @@ function addon:HubReset()
 end
 
 -- Non-Slayer challenges: active, not failed, character started, level 60 (or debug flag).
-function addon:ProcessHubLevel60Completions()
+-- opts.newLevelHint: from PLAYER_LEVEL_UP arg; UnitLevel("player") can still be <60 in the same callback.
+function addon:ProcessHubLevel60Completions(opts)
+    opts = opts or {}
     local db = self.CharDB
     if not db.characterStarted then return end
-    if UnitLevel("player") < 60 and not db.debugFakeLevel60 then return end
+    db.activeChallenges = db.activeChallenges or {}
+    db.failedChallenges = db.failedChallenges or {}
+    local hinted60 = type(opts.newLevelHint) == "number" and opts.newLevelHint >= 60
+    if UnitLevel("player") < 60 and not db.debugFakeLevel60 and not hinted60 then
+        return
+    end
 
     local slayerKey = self.SlayerChallengeKey
     local faction = UnitFactionGroup("player")
@@ -153,8 +163,11 @@ function addon:HubOnEnable()
     f:RegisterEvent("PLAYER_ENTERING_WORLD")
     f:SetScript("OnEvent", function(_, event, newLevel)
         if event == "PLAYER_LEVEL_UP" then
-            if type(newLevel) == "number" and newLevel >= 60 then
-                addon:ProcessHubLevel60Completions()
+            addon:ProcessHubLevel60Completions({ newLevelHint = newLevel })
+            if C_Timer and C_Timer.After then
+                C_Timer.After(0, function()
+                    addon:ProcessHubLevel60Completions()
+                end)
             end
             addon:ProcessHubSlayerFromProgress()
         else

@@ -67,9 +67,25 @@ function UI:ShowSelection()
     local tr, tg, tb = self.GetPlayerClassColor()
 
     local y = -6
-    local order = self.SortedChallengeKeys()
+    local sections = self.GetChallengeSections()
 
-    for _, key in ipairs(order) do
+    for _, sec in ipairs(sections) do
+        local hdr = CreateFrame("Frame", nil, content)
+        hdr:SetWidth(content:GetWidth() > 0 and content:GetWidth() or 400)
+        hdr._isCategoryHeader = true
+        local hdrFs = hdr:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        hdrFs:SetPoint("TOPLEFT", hdr, "TOPLEFT", 4, -2)
+        hdrFs:SetWidth(hdr:GetWidth() - 16)
+        hdrFs:SetJustifyH("LEFT")
+        self.SafeSetFont(hdrFs, fontPath, 14, "GameFontNormalLarge")
+        hdrFs:SetTextColor(0.9, 0.75, 0.3)
+        hdrFs:SetText(sec.title)
+        local hh = math.max(22, hdrFs:GetStringHeight() + 8)
+        hdr:SetHeight(hh)
+        hdr:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
+        y = y - hh - 2
+
+        for _, key in ipairs(sec.keys) do
         local challenge = addon:GetChallengesState()[key]
         if challenge then
         local row = CreateFrame("Frame", nil, content)
@@ -177,6 +193,7 @@ function UI:ShowSelection()
         row:SetHeight(rowH)
         row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
         y = y - rowH - 10
+        end
         end
     end
 

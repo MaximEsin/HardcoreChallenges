@@ -321,18 +321,70 @@ function UI:CreateBodyScroll(host)
     return scroll, child
 end
 
-function UI.SortedChallengeKeys()
-    local keys = {}
+--- Порядок секций в UI выбора / активных челленджей (id должен совпадать с challenge.category).
+UI.CHALLENGE_CATEGORY_ORDER = {
+    "Lore",
+    "Restrictions",
+    "Progression",
+    "Combat",
+}
+
+UI.ChallengeCategoryLabel = {
+    Lore = "Lore",
+    Restrictions = "Restrictions",
+    Progression = "Progression",
+    Combat = "Combat",
+}
+
+local DEFAULT_CHALLENGE_CATEGORY = "Progression"
+
+--- Секции с отсортированными ключами челленджей (hubOnly не включаются).
+function UI.GetChallengeSections()
+    local order = UI.CHALLENGE_CATEGORY_ORDER
+    local byCat = {}
+    for i = 1, #order do
+        byCat[order[i]] = {}
+    end
     for k, def in pairs(addon.Challenges or {}) do
         if not def.hubOnly then
+            local cat = def.category
+            if not cat or not byCat[cat] then
+                cat = DEFAULT_CHALLENGE_CATEGORY
+                if not byCat[cat] then
+                    byCat[cat] = {}
+                end
+            end
+            byCat[cat][#byCat[cat] + 1] = k
+        end
+    end
+    local sections = {}
+    for i = 1, #order do
+        local cat = order[i]
+        local keys = byCat[cat]
+        if keys and #keys > 0 then
+            table.sort(keys, function(a, b)
+                local na = addon.Challenges[a] and addon.Challenges[a].name or a
+                local nb = addon.Challenges[b] and addon.Challenges[b].name or b
+                return na < nb
+            end)
+            sections[#sections + 1] = {
+                id = cat,
+                title = UI.ChallengeCategoryLabel[cat] or cat,
+                keys = keys,
+            }
+        end
+    end
+    return sections
+end
+
+--- Плоский порядок ключей (категории по CHALLENGE_CATEGORY_ORDER, внутри — по имени).
+function UI.SortedChallengeKeys()
+    local keys = {}
+    for _, sec in ipairs(UI.GetChallengeSections()) do
+        for _, k in ipairs(sec.keys) do
             keys[#keys + 1] = k
         end
     end
-    table.sort(keys, function(a, b)
-        local na = addon.Challenges[a] and addon.Challenges[a].name or a
-        local nb = addon.Challenges[b] and addon.Challenges[b].name or b
-        return na < nb
-    end)
     return keys
 end
 

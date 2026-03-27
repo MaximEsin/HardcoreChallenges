@@ -13,6 +13,7 @@ local addon = HardcoreChallenges
         - points: очки
         - hubOnly: если true — только хаб (не в окне выбора / активных)
         - displayTitle: короткое звание для неймплейтов / тултипов (видно игрокам с аддоном)
+        - category: строковый id секции UI (см. ui/chrome.lua CHALLENGE_CATEGORY_ORDER); без поля = Progression
 ]]
 addon.Challenges = {
     ["Hardcore"] = {
@@ -22,6 +23,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\ability_creature_cursed_02",
         enabledByDefault = true,
         points = 10,
+        category = "Restrictions",
     },
     ["NoBank"] = {
         name = "No Bank",
@@ -30,6 +32,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\INV_Misc_Coin_01",
         enabledByDefault = false,
         points = 10,
+        category = "Restrictions",
     },
     ["NoMail"] = {
         name = "No Mail",
@@ -38,6 +41,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\INV_Letter_15",
         enabledByDefault = false,
         points = 10,
+        category = "Restrictions",
     },
     ["NoAuctionHouse"] = {
         name = "No Auction House",
@@ -46,6 +50,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\INV_Misc_Coin_02",
         enabledByDefault = false,
         points = 10,
+        category = "Restrictions",
     },
     ["NoMount"] = {
         name = "No Mount",
@@ -54,6 +59,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\ability_mount_ridinghorse",
         enabledByDefault = false,
         points = 20,
+        category = "Restrictions",
     },
     ["NoHearthstone"] = {
         name = "No Hearthstone",
@@ -62,6 +68,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\INV_Misc_Rune_01",
         enabledByDefault = false,
         points = 20,
+        category = "Restrictions",
     },
     ["DungeonOnce"] = {
         name = "Dungeon Once",
@@ -70,6 +77,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\ability_warrior_shieldmastery",
         enabledByDefault = false,
         points = 10,
+        category = "Progression",
     },
     ["SelfFound"] = {
         name = "Self Found",
@@ -78,6 +86,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\ui_selffound",
         enabledByDefault = false,
         points = 30,
+        category = "Restrictions",
     },
     ["SingleContinent"] = {
         name = "Single Continent",
@@ -86,6 +95,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\spell_arcane_portalundercity",
         enabledByDefault = false,
         points = 50,
+        category = "Restrictions",
     },
     ["CraftedLockedSolo"] = {
         name = "Crafted Locked (Solo)",
@@ -94,6 +104,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\Trade_Engineering",
         enabledByDefault = false,
         points = 50,
+        category = "Progression",
     },
     ["CraftedLockedDuo"] = {
         name = "Crafted Locked (Duo)",
@@ -102,6 +113,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\inv_gizmo_02",
         enabledByDefault = false,
         points = 35,
+        category = "Progression",
     },
     ["SingleSpec"] = {
         name = "Single Spec",
@@ -110,6 +122,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\Ability_Marksmanship",
         enabledByDefault = false,
         points = 30,
+        category = "Progression",
     },
     ["LordOfTheRings"] = {
         name = "Lord of the Rings",
@@ -118,6 +131,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\INV_Jewelry_Ring_03",
         enabledByDefault = false,
         points = 5,
+        category = "Lore",
     },
     ["ScarletTabard"] = {
         name = "Scarlet Tabard",
@@ -126,6 +140,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\INV_Shirt_GuildTabard_01",
         enabledByDefault = false,
         points = 5,
+        category = "Lore",
     },
     ["Level60Horde"] = {
         name = "Horde Champion",
@@ -134,6 +149,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\INV_BannerPVP_01",
         enabledByDefault = false,
         points = 10,
+        category = "Progression",
     },
     ["Level60Alliance"] = {
         name = "Alliance Champion",
@@ -142,6 +158,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\INV_BannerPVP_02",
         enabledByDefault = false,
         points = 10,
+        category = "Progression",
     },
     ["Slayer1"] = {
         name = "Slayer",
@@ -150,6 +167,7 @@ addon.Challenges = {
         icon = "Interface\\Icons\\Ability_Warrior_IntensifyRage",
         enabledByDefault = false,
         points = 30,
+        category = "Combat",
     },
     ["MetaAllChallenges"] = {
         name = "All Challenges",
@@ -188,6 +206,7 @@ function addon:GetChallengesState()
                 icon = challenge.icon,
                 enabled = db.activeChallenges[key],
                 points = challenge.points or 0,
+                category = challenge.category or "Progression",
             }
         end
     end

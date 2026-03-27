@@ -77,7 +77,13 @@
         "UnitLevel",
         "UnitName",
         "UnitTokenFromGUID",
-        "wipe"
+        "wipe",
+        "C_UnitAuras",
+        "GameTooltip",
+        "PlayerFrame_Update",
+        "FocusFrame_Update",
+        "TargetFrame_Update",
+        "UnitFrame_Update"
     ],
     "cSpell.words": [
         "geterrorhandler",

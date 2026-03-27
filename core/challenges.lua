@@ -87,6 +87,14 @@ addon.Challenges = {
         enabledByDefault = false,
         points = 20,
     },
+    ["LordOfTheRings"] = {
+        name = "Lord of the Rings",
+        displayTitle = "Ringbreaker",
+        description = "Destroy The 1 ring while standing in Blackrock Mountain.",
+        icon = "Interface\\Icons\\INV_Jewelry_Ring_03",
+        enabledByDefault = false,
+        points = 10,
+    },
     ["Slayer1"] = {
         name = "Slayer",
         displayTitle = "Slayer",

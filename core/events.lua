@@ -12,6 +12,16 @@ local UI = addon.UI
     Проверяем по spellId, чтобы не зависеть от локали и точной строки имени.
 ]]
 local SELF_FOUND_SPELL_ID = 431567
+local LOTR_KEY = "LordOfTheRings"
+local LOTR_RING_ITEM_ID = 8350
+local lastKnownRingCount = 0
+local GetSubZoneTextSafe = _G.GetSubZoneText
+local GetRealZoneTextSafe = _G.GetRealZoneText
+local GetZoneTextSafe = _G.GetZoneText
+local NUM_BAG_SLOTS_SAFE = _G.NUM_BAG_SLOTS or 4
+local GetContainerNumSlotsLegacy = _G.GetContainerNumSlots
+local GetContainerItemInfoLegacy = _G.GetContainerItemInfo
+local GetContainerItemLinkLegacy = _G.GetContainerItemLink
 
 function addon:HasSelfFoundBuff()
     if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
@@ -44,6 +54,110 @@ local function GetContinent()
     if info.mapType == Enum.UIMapType.Instance then return nil end
 
     return info.parentMapID or mapID
+end
+
+local function IsBlackrockMountain()
+    local function hasName(s)
+        if not s or s == "" then return false end
+        local low = strlower(s)
+        if strfind(low, "blackrock mountain", 1, true) then return true end
+        if strfind(low, "blackrock", 1, true) then return true end
+        return false
+    end
+
+    if hasName(GetSubZoneTextSafe and GetSubZoneTextSafe()) or hasName(GetRealZoneTextSafe and GetRealZoneTextSafe())
+        or hasName(GetZoneTextSafe and GetZoneTextSafe())
+    then
+        return true
+    end
+
+    local mapID = C_Map.GetBestMapForUnit("player")
+    while mapID do
+        local info = C_Map.GetMapInfo(mapID)
+        if not info then break end
+        if hasName(info.name) then
+            return true
+        end
+        if not info.parentMapID or info.parentMapID == 0 then break end
+        mapID = info.parentMapID
+    end
+    return false
+end
+
+local function GetItemIdFromLink(link)
+    if not link or link == "" then return nil end
+    local itemString = strmatch(link, "item[%-:](%d+)")
+    local id = itemString and tonumber(itemString)
+    if id and id > 0 then
+        return id
+    end
+    return nil
+end
+
+local function GetRingCountInBags()
+    local total = 0
+    local maxBag = NUM_BAG_SLOTS_SAFE
+    for bag = 0, maxBag do
+        local slots
+        if C_Container and C_Container.GetContainerNumSlots then
+            slots = C_Container.GetContainerNumSlots(bag)
+        elseif GetContainerNumSlotsLegacy then
+            slots = GetContainerNumSlotsLegacy(bag)
+        else
+            slots = 0
+        end
+        for slot = 1, (slots or 0) do
+            local itemInfo = C_Container and C_Container.GetContainerItemInfo and C_Container.GetContainerItemInfo(bag, slot)
+            if itemInfo then
+                local link = C_Container.GetContainerItemLink and C_Container.GetContainerItemLink(bag, slot)
+                local itemID = (itemInfo.itemID and tonumber(itemInfo.itemID)) or GetItemIdFromLink(link)
+                if itemID == LOTR_RING_ITEM_ID then
+                    total = total + (itemInfo.stackCount or 1)
+                end
+            else
+                local texture, count
+                if GetContainerItemInfoLegacy then
+                    texture, count = GetContainerItemInfoLegacy(bag, slot)
+                end
+                if texture then
+                    local link
+                    if GetContainerItemLinkLegacy then
+                        link = GetContainerItemLinkLegacy(bag, slot)
+                    end
+                    local itemID = GetItemIdFromLink(link)
+                    if itemID == LOTR_RING_ITEM_ID then
+                        total = total + (count or 1)
+                    end
+                end
+            end
+        end
+    end
+    return total
+end
+
+local function CheckLordOfTheRingsFromBags(isInit)
+    local db = addon.CharDB
+    if not db.characterStarted then
+        lastKnownRingCount = GetRingCountInBags()
+        return
+    end
+    if not db.activeChallenges[LOTR_KEY] or db.failedChallenges[LOTR_KEY] then
+        lastKnownRingCount = GetRingCountInBags()
+        return
+    end
+
+    local cur = GetRingCountInBags()
+    local prev = lastKnownRingCount or cur
+    lastKnownRingCount = cur
+    if isInit then return end
+
+    if prev > cur and cur == 0 and IsBlackrockMountain() then
+        addon:HubTryAddCompletion(LOTR_KEY)
+        if UI and UI.UpdateActive then
+            UI:UpdateActive()
+        end
+        UIErrorsFrame:AddMessage("Lord of the Rings challenge complete!", 0, 1, 0)
+    end
 end
 
 -- =========================
@@ -152,6 +266,7 @@ function addon:RunEnteringWorldChallengeChecks()
     local function run()
         CheckSelfFound()
         CheckSingleContinent()
+        CheckLordOfTheRingsFromBags(true)
     end
     run()
     if C_Timer and C_Timer.After then
@@ -165,4 +280,8 @@ end)
 
 addon:RegisterEvent("ZONE_CHANGED_NEW_AREA", function()
     CheckSingleContinent()
+end)
+
+addon:RegisterEvent("BAG_UPDATE_DELAYED", function()
+    CheckLordOfTheRingsFromBags(false)
 end)

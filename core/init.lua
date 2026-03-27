@@ -75,6 +75,8 @@ function addon:ResetCharacter()
     db.selectedDisplayTitleKey = nil
     db.dungeonOnceSeenMapIds = {}
     db.dungeonOnceInsideMapId = nil
+    db.startContinent = nil
+    db._scPewMismatchN = nil
 
     print("|cFFFF0000[Hardcore Challenges]|r Character data reset!")
 

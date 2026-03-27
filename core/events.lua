@@ -407,7 +407,8 @@ end
 -- =========================
 -- 🌍 SINGLE CONTINENT
 -- =========================
-local function CheckSingleContinent()
+local function CheckSingleContinent(opts)
+    opts = opts or {}
     local db = addon.CharDB
     if not db.activeChallenges["SingleContinent"] then return end
     if db.failedChallenges["SingleContinent"] then return end
@@ -422,10 +423,28 @@ local function CheckSingleContinent()
         return
     end
 
-    if current ~= db.startContinent then
+    local startRoot = addon:ResolveContinentRootMapId(db.startContinent) or db.startContinent
+    local currentRoot = addon:ResolveContinentRootMapId(current) or current
+    if currentRoot ~= startRoot then
+        -- PEW: map layer can be wrong once; require two agreeing mismatch samples before failing.
+        if opts.fromEnteringWorld then
+            db._scPewMismatchN = (db._scPewMismatchN or 0) + 1
+            if db._scPewMismatchN >= 2 then
+                db.failedChallenges["SingleContinent"] = true
+                UIErrorsFrame:AddMessage("Single Continent challenge failed!", 1, 0, 0)
+                if UI.activeWindow then UI:UpdateActive() end
+                db._scPewMismatchN = 0
+            end
+            return
+        end
+        db._scPewMismatchN = 0
         db.failedChallenges["SingleContinent"] = true
         UIErrorsFrame:AddMessage("Single Continent challenge failed!", 1, 0, 0)
         if UI.activeWindow then UI:UpdateActive() end
+    else
+        if opts.fromEnteringWorld then
+            db._scPewMismatchN = 0
+        end
     end
 end
 
@@ -434,10 +453,12 @@ end
 -- =========================
 -- PEW регистрируется в core/titles.lua (AceEvent: один обработчик PLAYER_ENTERING_WORLD на аддон).
 function addon:RunEnteringWorldChallengeChecks()
-    -- Self Found + Single Continent: never fail on the first PEW tick — auras/map data are often stale until a moment later.
+    local db = addon.CharDB
+    db._scPewMismatchN = 0
+    -- Self Found + Single Continent: auras/map often stale right after PEW; Single Continent needs 2 agreeing samples.
     local function runStableChecks()
         CheckSelfFound()
-        CheckSingleContinent()
+        CheckSingleContinent({ fromEnteringWorld = true })
     end
     local function runImmediate()
         CheckLordOfTheRingsFromBags(true)
@@ -451,6 +472,7 @@ function addon:RunEnteringWorldChallengeChecks()
         C_Timer.After(0, runImmediate)
         C_Timer.After(0.75, runStableChecks)
         C_Timer.After(2.5, runStableChecks)
+        C_Timer.After(4.5, runStableChecks)
     else
         runStableChecks()
     end

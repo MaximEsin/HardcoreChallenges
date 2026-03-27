@@ -45,8 +45,31 @@ function addon:GetContinentName(mapID)
     return info.name or "Unknown"
 end
 
---- Open-world continent map id for the player (nil in instances / while map not ready).
---- parentMapID 0 must not be used: in Lua `(0 or mapID)` is 0 and breaks continent compare.
+--- Walk map parents to a stable root (continent or top-level map). Fixes mismatches when
+--- start saved one parent id and login resolves another layer of the same landmass.
+function addon:ResolveContinentRootMapId(mapID)
+    if not mapID or mapID == 0 then return nil end
+    local cur = mapID
+    local seen = {}
+    while cur and cur ~= 0 and not seen[cur] do
+        seen[cur] = true
+        local info = C_Map.GetMapInfo(cur)
+        if not info then
+            return cur
+        end
+        if Enum.UIMapType and info.mapType == Enum.UIMapType.Continent then
+            return cur
+        end
+        local p = info.parentMapID
+        if not p or p == 0 then
+            return cur
+        end
+        cur = p
+    end
+    return cur
+end
+
+--- Open-world continent root for the player (nil in instances / while map not ready).
 function addon:GetPlayerContinentMapId()
     local mapID = C_Map.GetBestMapForUnit("player")
     if not mapID then return nil end
@@ -55,9 +78,5 @@ function addon:GetPlayerContinentMapId()
     if Enum.UIMapType and info.mapType == Enum.UIMapType.Instance then
         return nil
     end
-    local p = info.parentMapID
-    if p and p ~= 0 then
-        return p
-    end
-    return mapID
+    return self:ResolveContinentRootMapId(mapID)
 end

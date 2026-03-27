@@ -4,11 +4,13 @@ local addon = HardcoreChallenges
 local UI = addon.UI
 
 local META_KEY = "MetaAllChallenges"
+local VIEW_SELF = "self"
+local VIEW_TARGET = "target"
+local UnitIsUnitSafe = _G.UnitIsUnit
 
-local function SortedHubKeysExcludingMeta()
-    local hub = addon:HubEnsure()
+local function SortedHubKeysExcludingMeta(hubKeys)
     local keys = {}
-    for k in pairs(hub.completedKeys) do
+    for k in pairs(hubKeys or {}) do
         if addon.Challenges[k] and k ~= META_KEY then
             keys[#keys + 1] = k
         end
@@ -22,11 +24,15 @@ local function SortedHubKeysExcludingMeta()
 end
 
 function UI:RefreshHub()
-    addon:HubSyncMetaChallenge()
     local root = self.hubWindow
     if not root or not root._layoutHub then return end
+    if (root._hubViewMode or VIEW_SELF) == VIEW_SELF then
+        addon:HubSyncMetaChallenge()
+    end
     root._layoutHub()
-    if root._totalLabel then
+    if root._refreshHubViewLabel then
+        root._refreshHubViewLabel()
+    elseif root._totalLabel then
         root._totalLabel:SetText("|cFFFFFF00Account points: " .. addon:HubGetTotalPoints() .. "|r")
     end
     if self.RefreshTitlesTab then
@@ -53,6 +59,8 @@ function UI:ShowHub()
 
     _G[frameName] = root
     tinsert(UISpecialFrames, frameName)
+    root._hubViewMode = VIEW_SELF
+    root._hubViewName = nil
 
     local scroll, content = self:CreateBodyScroll(root.Body)
     root._scroll = scroll
@@ -78,11 +86,12 @@ function UI:ShowHub()
         end
 
         local y = -8
-        local hub = addon:HubEnsure()
+        local profile = root._hubViewMode == VIEW_TARGET and addon:GetRemoteProfileByName(root._hubViewName) or nil
+        local hubKeys = profile and profile.hubCompletedKeys or addon:HubEnsure().completedKeys
         local metaDef = addon.Challenges[META_KEY]
 
         if metaDef then
-            local metaComplete = hub.completedKeys[META_KEY] and true or false
+            local metaComplete = hubKeys[META_KEY] and true or false
             local row = CreateFrame("Frame", nil, contentFrame)
             row:SetWidth(contentFrame:GetWidth() > 0 and contentFrame:GetWidth() or 380)
 
@@ -130,7 +139,7 @@ function UI:ShowHub()
             y = y - rowH - 14
         end
 
-        local keys = SortedHubKeysExcludingMeta()
+        local keys = SortedHubKeysExcludingMeta(hubKeys)
 
         if #keys == 0 then
             local row = CreateFrame("Frame", nil, contentFrame)
@@ -191,6 +200,70 @@ function UI:ShowHub()
     addon:HubSyncMetaChallenge()
     root._layoutHub()
     totalLabel:SetText("|cFFFFFF00Account points: " .. addon:HubGetTotalPoints() .. "|r")
+
+    local viewBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
+    viewBtn:SetSize(96, 22)
+    viewBtn:SetPoint("RIGHT", foot, "RIGHT", -14, 6)
+    root._hubViewBtn = viewBtn
+
+    local function accountPointsFromHubMap(hubMap)
+        local total = 0
+        for key, completed in pairs(hubMap or {}) do
+            if completed and addon.Challenges[key] then
+                total = total + (addon.Challenges[key].points or 0)
+            end
+        end
+        return total
+    end
+
+    local function refreshHubViewLabel()
+        local profile = root._hubViewMode == VIEW_TARGET and addon:GetRemoteProfileByName(root._hubViewName) or nil
+        if profile then
+            viewBtn:SetText("Self")
+            if root._totalLabel then
+                root._totalLabel:SetText("|cFFFFFF00Account points (" .. (root._hubViewName or "?") .. "): "
+                    .. accountPointsFromHubMap(profile.hubCompletedKeys) .. "|r")
+            end
+        else
+            root._hubViewMode = VIEW_SELF
+            root._hubViewName = nil
+            viewBtn:SetText("Target")
+            if root._totalLabel then
+                root._totalLabel:SetText("|cFFFFFF00Account points: " .. addon:HubGetTotalPoints() .. "|r")
+            end
+        end
+    end
+    root._refreshHubViewLabel = refreshHubViewLabel
+
+    viewBtn:SetScript("OnClick", function()
+        if root._hubViewMode == VIEW_TARGET then
+            root._hubViewMode = VIEW_SELF
+            root._hubViewName = nil
+            root._layoutHub()
+            refreshHubViewLabel()
+            return
+        end
+        if UnitExists("target") and UnitIsPlayer("target")
+            and not (UnitIsUnitSafe and UnitIsUnitSafe("target", "player"))
+        then
+            local tname = GetUnitName("target", true) or UnitName("target")
+            if addon.RequestRemoteProfileForUnit then
+                addon:RequestRemoteProfileForUnit("target")
+            end
+            local profile = addon:GetRemoteProfileByName(tname)
+            if profile then
+                root._hubViewMode = VIEW_TARGET
+                root._hubViewName = profile.name or tname
+                root._layoutHub()
+                refreshHubViewLabel()
+            else
+                UIErrorsFrame:AddMessage("No target profile yet. Wait a moment and press again.", 1, 0.4, 0)
+            end
+        else
+            UIErrorsFrame:AddMessage("Target another player first.", 1, 0.4, 0)
+        end
+    end)
+    refreshHubViewLabel()
 
     self.hubWindow = root
 end

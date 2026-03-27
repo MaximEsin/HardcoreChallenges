@@ -2,6 +2,9 @@
 
 local addon = HardcoreChallenges
 local UI = addon.UI
+local VIEW_SELF = "self"
+local VIEW_TARGET = "target"
+local UnitIsUnitSafe = _G.UnitIsUnit
 
 local function GetCurrentContinent()
     local mapID = C_Map.GetBestMapForUnit("player")
@@ -41,6 +44,8 @@ function UI:ShowActive()
     local panelHost = CreateFrame("Frame", nil, body)
     panelHost:SetPoint("TOPLEFT", tabBar, "BOTTOMLEFT", 0, -4)
     panelHost:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", 0, 0)
+    root._challengesViewMode = VIEW_SELF
+    root._challengesViewName = nil
 
     local scroll, content = self:CreateBodyScroll(panelHost)
     root._scroll = scroll
@@ -104,19 +109,23 @@ function UI:ShowActive()
 
     local hubBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
     hubBtn:SetSize(72, 22)
-    hubBtn:SetPoint("LEFT", foot, "LEFT", 14, 6)
+    hubBtn:SetPoint("LEFT", foot, "LEFT", 14, -6)
     hubBtn:SetText("Hub")
     hubBtn:SetScript("OnClick", function()
         UI:ShowHub()
     end)
 
     local pointsLabel = foot:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-    pointsLabel:SetPoint("CENTER", foot, "CENTER", 0, 6)
+    pointsLabel:SetPoint("CENTER", foot, "CENTER", 0, 12)
     UI.SafeSetFont(pointsLabel, fontPath, 18, "GameFontHighlightLarge")
     root._pointsFooter = pointsLabel
 
     function root._layoutRows()
         local db = addon.CharDB
+        local viewMode = root._challengesViewMode or VIEW_SELF
+        local profile = viewMode == VIEW_TARGET and addon.GetRemoteProfileByName and addon:GetRemoteProfileByName(root._challengesViewName) or nil
+        local activeMap = (profile and profile.activeChallenges) or db.activeChallenges
+        local isRemote = profile and true or false
         local contentFrame = root._content
         if not contentFrame then return end
 
@@ -129,8 +138,8 @@ function UI:ShowActive()
         local order = UI.SortedChallengeKeys()
 
         for _, key in ipairs(order) do
-            if db.activeChallenges[key] then
-            local challenge = addon:GetChallengesState()[key]
+            if activeMap[key] then
+            local challenge = addon.Challenges[key]
             if challenge then
 
             local row = CreateFrame("Frame", nil, contentFrame)
@@ -158,10 +167,10 @@ function UI:ShowActive()
             bodyFs:SetTextColor(r0, g0, b0)
 
             local desc = challenge.description
-            local pts = "|cFFFFFF00+" .. challenge.points .. " points|r"
+            local pts = "|cFFFFFF00+" .. (challenge.points or 0) .. " points|r"
             local extra = ""
 
-            if addon.IsSlayerChallengeKey and addon:IsSlayerChallengeKey(key) then
+            if not isRemote and addon.IsSlayerChallengeKey and addon:IsSlayerChallengeKey(key) then
                 local cur, goal = addon:GetSlayerProgressDisplay(key)
                 local kcol = cur >= goal and "|cFF00FF00" or "|cFFFFFF00"
                 extra = "\n" .. kcol .. "Kills: " .. cur .. "/" .. goal .. "|r"
@@ -170,7 +179,7 @@ function UI:ShowActive()
                 else
                     pts = "|cFFFFFF00+" .. challenge.points .. " points (at " .. goal .. " kills)|r"
                 end
-            elseif key == "SingleContinent" then
+            elseif not isRemote and key == "SingleContinent" then
                 local currentID = GetCurrentContinent()
                 local currentName = currentID and addon:GetContinentName(currentID) or "Unknown"
                 local startName = db.startContinent and addon:GetContinentName(db.startContinent) or "Unknown"
@@ -181,12 +190,12 @@ function UI:ShowActive()
                 end
                 extra = "\n|cFFFFFF00Starting: " .. startName .. "|r" ..
                         "\n" .. color .. "Current: " .. currentName .. "|r"
-            elseif key == "CraftedLockedDuo" then
+            elseif not isRemote and key == "CraftedLockedDuo" then
                 local pn = db.craftedDuoPartner or ""
                 extra = "\n|cFFFFFF00Partner: " .. (pn ~= "" and pn or "(not set)") .. "|r"
-            elseif key == "CraftedLockedSolo" then
+            elseif not isRemote and key == "CraftedLockedSolo" then
                 extra = "\n|cFFFFFF00Solo: only your own crafts.|r"
-            elseif key == "SingleSpec" then
+            elseif not isRemote and key == "SingleSpec" then
                 local st = addon:GetSingleSpecTalentState()
                 if st.treeCount == 0 then
                     extra = "\n|cFFFFFF00Talent tree: none yet|r"
@@ -197,11 +206,11 @@ function UI:ShowActive()
                 end
             end
 
-            local status = db.failedChallenges[key]
+            local status = (not isRemote) and db.failedChallenges[key]
             local statusStr
             if status then
                 statusStr = "|cFFFF4444Failed|r"
-            elseif addon.IsSlayerChallengeKey and addon:IsSlayerChallengeKey(key) then
+            elseif not isRemote and addon.IsSlayerChallengeKey and addon:IsSlayerChallengeKey(key) then
                 local cur = select(1, addon:GetSlayerProgressDisplay(key))
                 local goal = addon.GetSlayerGoal and addon:GetSlayerGoal() or 10000
                 statusStr = cur >= goal and "|cFF66FF66Complete|r" or "|cFF66FF66Active|r"
@@ -230,6 +239,70 @@ function UI:ShowActive()
         root._pointsFooter:SetText("|cFFFFFF00Total points: " .. addon:GetPoints() .. "|r")
     end
 
+    local viewBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
+    viewBtn:SetSize(96, 22)
+    viewBtn:SetPoint("LEFT", hubBtn, "RIGHT", 8, 0)
+    root._viewBtn = viewBtn
+
+    local function selectedPointsFromMap(map)
+        local total = 0
+        for key, enabled in pairs(map or {}) do
+            if enabled and addon.Challenges[key] and not addon.Challenges[key].hubOnly then
+                total = total + (addon.Challenges[key].points or 0)
+            end
+        end
+        return total
+    end
+
+    local function refreshViewModeLabel()
+        local profile = root._challengesViewMode == VIEW_TARGET and addon:GetRemoteProfileByName(root._challengesViewName) or nil
+        if profile then
+            viewBtn:SetText("Self")
+            if root._pointsFooter then
+                root._pointsFooter:SetText("|cFFFFFF00Selected points (" .. (root._challengesViewName or "?") .. "): "
+                    .. selectedPointsFromMap(profile.activeChallenges) .. "|r")
+            end
+        else
+            root._challengesViewMode = VIEW_SELF
+            root._challengesViewName = nil
+            viewBtn:SetText("Target")
+            if root._pointsFooter then
+                root._pointsFooter:SetText("|cFFFFFF00Total points: " .. addon:GetPoints() .. "|r")
+            end
+        end
+    end
+    root._refreshViewModeLabel = refreshViewModeLabel
+
+    viewBtn:SetScript("OnClick", function()
+        if root._challengesViewMode == VIEW_TARGET then
+            root._challengesViewMode = VIEW_SELF
+            root._challengesViewName = nil
+            root._layoutRows()
+            refreshViewModeLabel()
+            return
+        end
+        if UnitExists("target") and UnitIsPlayer("target")
+            and not (UnitIsUnitSafe and UnitIsUnitSafe("target", "player"))
+        then
+            local tname = GetUnitName("target", true) or UnitName("target")
+            if addon.RequestRemoteProfileForUnit then
+                addon:RequestRemoteProfileForUnit("target")
+            end
+            local profile = addon:GetRemoteProfileByName(tname)
+            if profile then
+                root._challengesViewMode = VIEW_TARGET
+                root._challengesViewName = profile.name or tname
+                root._layoutRows()
+                refreshViewModeLabel()
+            else
+                UIErrorsFrame:AddMessage("No target profile yet. Wait a moment and press again.", 1, 0.4, 0)
+            end
+        else
+            UIErrorsFrame:AddMessage("Target another player first.", 1, 0.4, 0)
+        end
+    end)
+    refreshViewModeLabel()
+
     self.activeWindow = root
 end
 
@@ -237,7 +310,9 @@ function UI:UpdateActive()
     local root = self.activeWindow
     if not root or not root._layoutRows then return end
     root._layoutRows()
-    if root._pointsFooter then
+    if root._refreshViewModeLabel then
+        root._refreshViewModeLabel()
+    elseif root._pointsFooter then
         root._pointsFooter:SetText("|cFFFFFF00Total points: " .. addon:GetPoints() .. "|r")
     end
     if root._currentTab == "titles" and root._layoutTitles then

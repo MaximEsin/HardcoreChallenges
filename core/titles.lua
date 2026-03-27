@@ -5,6 +5,15 @@ local addon = HardcoreChallenges
 local PREFIX = "HCChallenges"
 local COLOR_PREFIX = "|cFFFFD100"
 local COLOR_SUFFIX = "|r"
+local UnitIsUnitSafe = _G.UnitIsUnit
+local ChatFrame_AddMessageEventFilterSafe = _G.ChatFrame_AddMessageEventFilter
+local IsInGuildSafe = _G.IsInGuild
+local IsInRaidSafe = _G.IsInRaid
+local IsInGroupSafe = _G.IsInGroup
+local CompactUnitFrame_UpdateNameSafe = _G.CompactUnitFrame_UpdateName
+local function trim(s)
+    return (s or ""):gsub("^%s+", ""):gsub("%s+$", "")
+end
 
 local function SendAddonMessageCompat(prefix, msg, chatType, target)
     if C_ChatInfo and C_ChatInfo.SendAddonMessage then
@@ -15,6 +24,7 @@ local function SendAddonMessageCompat(prefix, msg, chatType, target)
 end
 
 addon.remoteTitleKeys = {}
+addon.remoteChallengeProfiles = {}
 
 local requestThrottle = {}
 local THROTTLE_SEC = 40
@@ -22,6 +32,7 @@ local chatTitleQThrottle = {}
 local CHAT_Q_THROTTLE_SEC = 25
 local ticker
 local chatTitleFiltersRegistered = false
+local RequestTitleWhisper
 
 local CHAT_EVENTS_WITH_TITLE = {
     "CHAT_MSG_WHISPER",
@@ -37,7 +48,7 @@ local function StoreRemoteTitle(sender, key)
     if not sender or sender == "" then return end
     local val = key or false
     local variants = {
-        strtrim(sender),
+        trim(sender),
         Ambiguate(sender, "none"),
         Ambiguate(sender, "short"),
     }
@@ -49,6 +60,109 @@ local function StoreRemoteTitle(sender, key)
                 addon.remoteTitleKeys[strsub(v, 1, hyphen - 1)] = val
             end
         end
+    end
+end
+
+local function BuildNameVariants(name)
+    local out = {}
+    local base = trim(name or "")
+    if base ~= "" then
+        out[#out + 1] = base
+        out[#out + 1] = Ambiguate(base, "none")
+        out[#out + 1] = Ambiguate(base, "short")
+        local hyphen = strfind(base, "-", 1, true)
+        if hyphen then
+            out[#out + 1] = strsub(base, 1, hyphen - 1)
+        end
+    end
+    local uniq, deduped = {}, {}
+    for _, v in ipairs(out) do
+        if v and v ~= "" and not uniq[v] then
+            uniq[v] = true
+            deduped[#deduped + 1] = v
+        end
+    end
+    return deduped
+end
+
+local function EnsureRemoteProfile(sender)
+    if not sender or sender == "" then return nil end
+    local base = trim(sender)
+    if base == "" then return nil end
+    local p = addon.remoteChallengeProfiles[base]
+    if not p then
+        p = {
+            name = base,
+            activeChallenges = {},
+            hubCompletedKeys = {},
+            updatedAt = 0,
+        }
+        addon.remoteChallengeProfiles[base] = p
+    end
+    for _, v in ipairs(BuildNameVariants(base)) do
+        addon.remoteChallengeProfiles[v] = p
+    end
+    return p
+end
+
+local function ParseKeyListPayload(payload)
+    local out = {}
+    payload = payload or ""
+    if payload == "" then
+        return out
+    end
+    for token in string.gmatch(payload, "([^,]+)") do
+        local key = trim(token or "")
+        if key ~= "" and addon.Challenges[key] then
+            out[key] = true
+        end
+    end
+    return out
+end
+
+local function EncodeActiveChallengePayload()
+    local db = addon.CharDB
+    local keys = {}
+    for key, enabled in pairs(db.activeChallenges or {}) do
+        if enabled and addon.Challenges[key] and not addon.Challenges[key].hubOnly then
+            keys[#keys + 1] = key
+        end
+    end
+    table.sort(keys)
+    return table.concat(keys, ",")
+end
+
+local function EncodeHubPayload()
+    local hub = addon:HubEnsure()
+    local keys = {}
+    for key, completed in pairs(hub.completedKeys or {}) do
+        if completed and addon.Challenges[key] then
+            keys[#keys + 1] = key
+        end
+    end
+    table.sort(keys)
+    return table.concat(keys, ",")
+end
+
+function addon:GetRemoteProfileByName(name)
+    if not name or name == "" then return nil end
+    for _, v in ipairs(BuildNameVariants(name)) do
+        local p = self.remoteChallengeProfiles[v]
+        if p then return p end
+    end
+    return nil
+end
+
+function addon:GetRemoteProfileForUnit(unit)
+    if not unit or not UnitExists(unit) or not UnitIsPlayer(unit) then return nil end
+    local full = GetUnitName(unit, true)
+    local short = UnitName(unit)
+    return self:GetRemoteProfileByName(full) or self:GetRemoteProfileByName(short)
+end
+
+function addon:RequestRemoteProfileForUnit(unit)
+    if RequestTitleWhisper then
+        RequestTitleWhisper(unit)
     end
 end
 
@@ -84,10 +198,10 @@ local function ExtractPlainAuthorName(author)
     if body then
         local pname = strsplit(":", body)
         if pname and pname ~= "" then
-            return strtrim(pname)
+            return trim(pname)
         end
     end
-    return strtrim(author)
+    return trim(author)
 end
 
 local function IsSamePlayerAsMe(plain)
@@ -176,10 +290,10 @@ local function ChatTitleMessageFilter(_chatFrame, event, msg, author, ...)
 end
 
 local function RegisterChatTitleFilters()
-    if chatTitleFiltersRegistered or not ChatFrame_AddMessageEventFilter then return end
+    if chatTitleFiltersRegistered or not ChatFrame_AddMessageEventFilterSafe then return end
     for _, ev in ipairs(CHAT_EVENTS_WITH_TITLE) do
         pcall(function()
-            ChatFrame_AddMessageEventFilter(ev, ChatTitleMessageFilter)
+            ChatFrame_AddMessageEventFilterSafe(ev, ChatTitleMessageFilter)
         end)
     end
     chatTitleFiltersRegistered = true
@@ -237,18 +351,18 @@ function addon:BroadcastDisplayTitle()
     local msg = "T|" .. payload
     if #msg > 255 then return end
     pcall(function()
-        if IsInGuild() then
+        if IsInGuildSafe and IsInGuildSafe() then
             SendAddonMessageCompat(PREFIX, msg, "GUILD")
         end
-        if IsInRaid() then
+        if IsInRaidSafe and IsInRaidSafe() then
             SendAddonMessageCompat(PREFIX, msg, "RAID")
-        elseif IsInGroup() then
+        elseif IsInGroupSafe and IsInGroupSafe() then
             SendAddonMessageCompat(PREFIX, msg, "PARTY")
         end
     end)
 end
 
-local function RequestTitleWhisper(unit)
+function RequestTitleWhisper(unit)
     if not unit or not UnitExists(unit) or not UnitIsPlayer(unit) then return end
     if UnitIsUnit(unit, "player") then return end
     local target = GetUnitName(unit, true)
@@ -340,18 +454,21 @@ end
 --- После прихода addon-сообщения с званием перерисовать стандартные рамки.
 function addon:RefreshTitleDependentUnitFrames()
     pcall(function()
-        if TargetFrame_Update and TargetFrame then
-            TargetFrame_Update(TargetFrame)
+        local tf = _G.TargetFrame
+        if TargetFrame_Update and tf then
+            TargetFrame_Update(tf)
         end
     end)
     pcall(function()
-        if FocusFrame_Update and FocusFrame then
-            FocusFrame_Update(FocusFrame)
+        local ff = _G.FocusFrame
+        if FocusFrame_Update and ff then
+            FocusFrame_Update(ff)
         end
     end)
     pcall(function()
-        if PlayerFrame_Update and PlayerFrame then
-            PlayerFrame_Update(PlayerFrame)
+        local pf = _G.PlayerFrame
+        if PlayerFrame_Update and pf then
+            PlayerFrame_Update(pf)
         end
     end)
 end
@@ -385,6 +502,8 @@ function addon:TitlesOnEnable()
         if message == "Q" and channel == "WHISPER" and sender then
             local payload = self:GetBroadcastTitlePayload()
             SendAddonMessageCompat(PREFIX, "T|" .. payload, "WHISPER", sender)
+            SendAddonMessageCompat(PREFIX, "C|" .. EncodeActiveChallengePayload(), "WHISPER", sender)
+            SendAddonMessageCompat(PREFIX, "H|" .. EncodeHubPayload(), "WHISPER", sender)
             return
         end
         if strsub(message or "", 1, 2) == "T|" then
@@ -397,17 +516,41 @@ function addon:TitlesOnEnable()
             if self.RefreshTitleDependentUnitFrames then
                 self:RefreshTitleDependentUnitFrames()
             end
+            return
+        end
+        if strsub(message or "", 1, 2) == "C|" then
+            local profile = EnsureRemoteProfile(sender)
+            if not profile then return end
+            profile.activeChallenges = ParseKeyListPayload(strsub(message, 3))
+            profile.updatedAt = GetTime()
+            if self.UI and self.UI.activeWindow and self.UI.UpdateActive then
+                self.UI:UpdateActive()
+            end
+            return
+        end
+        if strsub(message or "", 1, 2) == "H|" then
+            local profile = EnsureRemoteProfile(sender)
+            if not profile then return end
+            profile.hubCompletedKeys = ParseKeyListPayload(strsub(message, 3))
+            profile.updatedAt = GetTime()
+            if self.UI and self.UI.hubWindow and self.UI.RefreshHub then
+                self.UI:RefreshHub()
+            end
         end
     end)
 
     self:RegisterEvent("UPDATE_MOUSEOVER_UNIT", function()
-        if UnitExists("mouseover") and UnitIsPlayer("mouseover") and not UnitIsUnit("mouseover", "player") then
+        if UnitExists("mouseover") and UnitIsPlayer("mouseover")
+            and not (UnitIsUnitSafe and UnitIsUnitSafe("mouseover", "player"))
+        then
             RequestTitleWhisper("mouseover")
         end
     end)
 
     self:RegisterEvent("PLAYER_TARGET_CHANGED", function()
-        if UnitExists("target") and UnitIsPlayer("target") and not UnitIsUnit("target", "player") then
+        if UnitExists("target") and UnitIsPlayer("target")
+            and not (UnitIsUnitSafe and UnitIsUnitSafe("target", "player"))
+        then
             RequestTitleWhisper("target")
             if C_Timer and C_Timer.After then
                 C_Timer.After(0.35, function()
@@ -426,7 +569,7 @@ function addon:TitlesOnEnable()
 
     pcall(function()
         self:RegisterEvent("NAME_PLATE_UNIT_ADDED", function(event, unit)
-            if unit and UnitIsPlayer(unit) and not UnitIsUnit(unit, "player") then
+            if unit and UnitIsPlayer(unit) and not (UnitIsUnitSafe and UnitIsUnitSafe(unit, "player")) then
                 RequestTitleWhisper(unit)
             end
         end)
@@ -439,9 +582,9 @@ function addon:TitlesOnEnable()
         end)
     end
 
-    if hooksecurefunc and CompactUnitFrame_UpdateName then
+    if hooksecurefunc and CompactUnitFrame_UpdateNameSafe then
         pcall(function()
-            hooksecurefunc("CompactUnitFrame_UpdateName", OnCompactNameUpdate)
+            hooksecurefunc(CompactUnitFrame_UpdateNameSafe, OnCompactNameUpdate)
         end)
     end
 

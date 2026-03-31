@@ -67,6 +67,12 @@ Add new challenges in `core/challenges.lua` with `category` set to one of these 
 - If you are **above level 1** and **never started**, the minimap opens **Account Hub** only (you cannot begin a run mid-level).
 - **Reset character** / **Reset hub** are in the Hub footer (with confirmation dialogs).
 
+### Crafted Lock chat notices
+
+- On load, the addon prints a short **loaded** line with the version.
+- When a new equippable item ID is **crafted** into your bags, it prints that the ID was **added to your allowed list**.
+- In **duo** mode, after you open trade with your saved partner and the allowlists **merge**, it prints how many **new** allowed IDs you gained from them (if any).
+
 ## Installation (manual)
 
 1. Download/clone this repository.
@@ -88,7 +94,7 @@ chmod +x scripts/make-release-zip.sh
 ./scripts/make-release-zip.sh
 ```
 
-This writes `HardcoreChallenges-release.zip` next to the addon (one top-level folder `HardcoreChallenges/` with `HardcoreChallenges.toc` inside).
+This writes `HardcoreChallenges-<version>-release.zip` next to the addon (version is read from `## Version` in `HardcoreChallenges.toc`). Inside: one top-level folder `HardcoreChallenges/` with `HardcoreChallenges.toc`.
 
 **Option B — GitHub:** **Code → Download ZIP** gives an archive **without `.git`**, but re-compressing on Mac can still add `__MACOSX`. Prefer the script or terminal `zip` with `COPYFILE_DISABLE=1`.
 

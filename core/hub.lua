@@ -92,7 +92,6 @@ function addon:HubReset()
     if self.UI and self.UI.RefreshTitlesTab then
         self.UI:RefreshTitlesTab()
     end
-    print("|cFFFFCC00[HC]|r Account hub cleared.")
 end
 
 -- Non-Slayer challenges: active, not failed, character started, level 60.

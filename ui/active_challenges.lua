@@ -217,9 +217,12 @@ function UI:ShowActive()
                         "\n" .. color .. "Current: " .. currentName .. "|r"
             elseif not isRemote and key == "CraftedLockedDuo" then
                 local pn = db.craftedDuoPartner or ""
+                local nid = addon.CraftedLockCountAllowedItemIds and addon:CraftedLockCountAllowedItemIds() or 0
                 extra = "\n|cFFFFFF00Partner: " .. (pn ~= "" and pn or "(not set)") .. "|r"
+                    .. "\n|cFFFFFF00Allowed item IDs: " .. tostring(nid) .. "|r"
             elseif not isRemote and key == "CraftedLockedSolo" then
-                extra = "\n|cFFFFFF00Solo: only your own crafts.|r"
+                local nid = addon.CraftedLockCountAllowedItemIds and addon:CraftedLockCountAllowedItemIds() or 0
+                extra = "\n|cFFFFFF00Allowed item IDs: " .. tostring(nid) .. "|r"
             elseif not isRemote and key == "SingleSpec" then
                 local st = addon:GetSingleSpecTalentState()
                 if st.treeCount == 0 then

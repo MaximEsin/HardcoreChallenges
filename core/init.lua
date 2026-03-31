@@ -33,6 +33,7 @@ function addon:InitDB()
         minimap = { hide = false, angle = 0 },
         startContinent = nil,
         craftedDuoPartner = "",
+        craftedLockAllowedItemIds = {},
         craftedAllowedKeys = {},
         partnerGiftedKeys = {},
         slayer1KillCount = 0,
@@ -58,6 +59,8 @@ function addon:OnInitialize()
     if self.CraftedLockOnInitialize then
         self:CraftedLockOnInitialize()
     end
+    local ver = (GetAddOnMetadata and GetAddOnMetadata("HardcoreChallenges", "Version")) or "?"
+    print("|cff33ff99[Hardcore Challenges]|r v" .. tostring(ver) .. " loaded.")
 end
 
 --[[ 
@@ -69,16 +72,18 @@ function addon:ResetCharacter()
     db.activeChallenges = {}
     db.failedChallenges = {}
     db.craftedDuoPartner = ""
+    db.craftedLockAllowedItemIds = {}
     db.craftedAllowedKeys = {}
     db.partnerGiftedKeys = {}
+    db.craftedManualAllowKeys = {}
+    db.craftedManualAllowItemIds = {}
+    db._hcCraftedLockItemIdMigrated = nil
     db.slayer1KillCount = 0
     db.selectedDisplayTitleKey = nil
     db.dungeonOnceSeenMapIds = {}
     db.dungeonOnceInsideMapId = nil
     db.startContinent = nil
     db._scPewMismatchN = nil
-
-    print("|cFFFF0000[Hardcore Challenges]|r Character data reset!")
 
     if self.UI.selectionWindow then
         self.UI.selectionWindow:Hide()

@@ -1,25 +1,70 @@
 -- core/crafted_lock.lua
--- Crafted Locked (Solo / Duo): only self-crafted equipable gear (+ partner attestation in duo).
+-- Crafted Locked (Solo / Duo): allow equipping gear whose itemId is on the character allowlist.
+-- Crafts add itemId automatically; duo merges allowlists with saved trade partner via addon whisper.
 
 local addon = HardcoreChallenges
 
 local MSG_PREFIX = "HCChallenges"
+local ALLOW_LIST_CHUNK = 220
+
 local EQUIP_SLOTS_NAKED_CHECK = {
     1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
 }
 local BAG_EQUIP_SLOTS = { 20, 21, 22, 23 }
 
 local castBagSnapshot = nil
-local tradeAcceptedFlag = false
-local pendingPartnerCerts = {}
+
+--- Incoming chunked allowlist from trade partner (C:i/n:payload).
+local allowListRecv = {
+    total = nil,
+    parts = {},
+    fromNorm = nil,
+}
+
+local ScanEquipment
+
+local function ResetAllowListRecv()
+    allowListRecv.total = nil
+    wipe(allowListRecv.parts)
+    allowListRecv.fromNorm = nil
+end
 
 local function Db()
     return addon.CharDB
 end
 
+--- One-time: merge old per-instance keys into craftedLockAllowedItemIds.
+local function MigrateLegacyCraftedLockOnce(db)
+    if db._hcCraftedLockItemIdMigrated then return end
+    db._hcCraftedLockItemIdMigrated = true
+    db.craftedLockAllowedItemIds = db.craftedLockAllowedItemIds or {}
+    local function ingestKeyTable(t)
+        if not t then return end
+        for k, on in pairs(t) do
+            if on then
+                local id = select(2, strsplit(":", k))
+                id = id and tonumber(id)
+                if id then
+                    db.craftedLockAllowedItemIds[id] = true
+                end
+            end
+        end
+    end
+    ingestKeyTable(db.craftedAllowedKeys)
+    ingestKeyTable(db.partnerGiftedKeys)
+    ingestKeyTable(db.craftedManualAllowKeys)
+    if db.craftedManualAllowItemIds then
+        for itemId, on in pairs(db.craftedManualAllowItemIds) do
+            if on then
+                db.craftedLockAllowedItemIds[itemId] = true
+            end
+        end
+    end
+end
+
 local function EnsureTables(db)
-    db.craftedAllowedKeys = db.craftedAllowedKeys or {}
-    db.partnerGiftedKeys = db.partnerGiftedKeys or {}
+    db.craftedLockAllowedItemIds = db.craftedLockAllowedItemIds or {}
+    MigrateLegacyCraftedLockOnce(db)
 end
 
 function addon:CraftedLockActive()
@@ -51,6 +96,55 @@ function addon:CraftedLockPartnerNorm()
     return NormPartner(Db().craftedDuoPartner or "")
 end
 
+local function SenderNorm(who)
+    local n, r = strsplit("-", who or "")
+    if r then
+        return NormPartner(n .. "-" .. r)
+    end
+    return NormPartner(who)
+end
+
+--- Saved partner without realm still matches whisper/trade Name-Realm.
+local function PartnerAddonWhisperMatches(sender)
+    local myP = addon:CraftedLockPartnerNorm()
+    if myP == "" then return false end
+    local s1 = SenderNorm(sender)
+    local s2 = SenderNorm(Ambiguate(sender, "short"))
+    if s1 == myP or s2 == myP then return true end
+    if not strfind(myP, "-", 1, true) then
+        local only = NormPartner(strsplit("-", Ambiguate(sender, "short")))
+        if only == myP then return true end
+    end
+    return false
+end
+
+local function TradePartnerUnitId()
+    if UnitExists("npc") then return "npc" end
+    return nil
+end
+
+local function TradePartnerFullName()
+    local u = TradePartnerUnitId()
+    if not u then return nil end
+    return GetUnitName(u, true) or UnitName(u)
+end
+
+local function PartnerNameMatchesTrade()
+    local p = NormPartner(Db().craftedDuoPartner or "")
+    if p == "" then return false end
+    local who = TradePartnerFullName()
+    if not who then return false end
+    local nw = NormPartner(who)
+    local ns = NormPartner(Ambiguate(who, "short"))
+    if nw == p or ns == p then return true end
+    if not strfind(p, "-", 1, true) then
+        if NormPartner(strsplit("-", who)) == p then return true end
+        local short = Ambiguate(who, "short")
+        if short and short ~= who and NormPartner(strsplit("-", short)) == p then return true end
+    end
+    return false
+end
+
 local function ItemHeaderFromLink(link)
     if not link then return nil end
     return link:match("|H([^|]+)|h")
@@ -66,10 +160,10 @@ local function ItemIdFromLink(link)
     return tonumber((select(2, strsplit(":", h))))
 end
 
-local function UniqueFromHeader(h)
-    if not h then return 0 end
-    local parts = { strsplit(":", h) }
-    return tonumber(parts[9] or parts[8] or 0) or 0
+local function ItemIdFromInstanceKey(key)
+    if not key or key == "" then return nil end
+    local id = select(2, strsplit(":", key))
+    return id and tonumber(id) or nil
 end
 
 local function GetContainerNumSlotsCompat(bag)
@@ -152,9 +246,15 @@ local function RegisterCraftedLink(link)
     EnsureTables(db)
     local itemId = ItemIdFromLink(link)
     if not itemId or not IsRestrictedEquipableCompat(itemId) then return end
-    local key = ItemInstanceKeyFromLink(link)
-    if key then
-        db.craftedAllowedKeys[key] = true
+    local isNew = not db.craftedLockAllowedItemIds[itemId]
+    db.craftedLockAllowedItemIds[itemId] = true
+    if isNew then
+        local nm = GetItemInfo(itemId) or ("#" .. tostring(itemId))
+        print("|cff00ff00[HC]|r Crafted Lock: item ID " .. tostring(itemId) .. " (" .. nm .. ") added to your allowed list.")
+    end
+    ScanEquipment()
+    if addon.UI and addon.UI.UpdateActive then
+        addon.UI:UpdateActive()
     end
 end
 
@@ -162,14 +262,11 @@ local function AllowedToWearKey(itemKey)
     if not itemKey then return true end
     local db = Db()
     EnsureTables(db)
-    if db.craftedAllowedKeys[itemKey] then return true end
-    if addon:CraftedLockIsDuo() and db.partnerGiftedKeys[itemKey] then
-        return true
-    end
+    local id = ItemIdFromInstanceKey(itemKey)
+    if id and db.craftedLockAllowedItemIds[id] then return true end
     return false
 end
 
---- First empty slot in backpack or any equipped bag (nil if completely full).
 local function FindFirstEmptyBagSlot()
     for bag = BACKPACK_CONTAINER, NUM_BAG_FRAMES do
         local n = GetContainerNumSlotsCompat(bag) or 0
@@ -201,7 +298,6 @@ local function FailCraftedLockChallenge(reason)
     end
 end
 
---- Returns true if the challenge was failed (inventory full or move error).
 local function StripEquipSlot(invSlot)
     if InCombatLockdown() then return false end
     if not GetInventoryItemID("player", invSlot) then return false end
@@ -234,7 +330,7 @@ local function StripEquipSlot(invSlot)
     return false
 end
 
-local function ScanEquipment()
+ScanEquipment = function()
     if not addon:CraftedLockNeedsRules() then return end
     for _, invSlot in ipairs(EQUIP_SLOTS_NAKED_CHECK) do
         if not addon:CraftedLockActive() then return end
@@ -245,7 +341,7 @@ local function ScanEquipment()
                 local key = ItemInstanceKeyFromLink(link)
                 if not AllowedToWearKey(key) then
                     UIErrorsFrame:AddMessage(
-                        "Crafted Lock: this gear is not allowed (must be your craft" .. (addon:CraftedLockIsDuo() and " or partner trade" or "") .. ").",
+                        "Crafted Lock: this gear is not on your allowed item list (craft it or trade sync with your duo partner).",
                         1, 0.25, 0.25
                     )
                     if StripEquipSlot(invSlot) then return end
@@ -261,7 +357,7 @@ local function ScanEquipment()
             if id and IsEquippableItem(id) then
                 local key = ItemInstanceKeyFromLink(link)
                 if not AllowedToWearKey(key) then
-                    UIErrorsFrame:AddMessage("Crafted Lock: bags must be self-crafted (or partner gift in duo).", 1, 0.25, 0.25)
+                    UIErrorsFrame:AddMessage("Crafted Lock: bags — only allowed item IDs.", 1, 0.25, 0.25)
                     if StripEquipSlot(invSlot) then return end
                 end
             end
@@ -285,9 +381,12 @@ end
 
 function addon:CraftedLockOnChallengeStart()
     local db = Db()
+    db.craftedLockAllowedItemIds = {}
     db.craftedAllowedKeys = {}
     db.partnerGiftedKeys = {}
-    wipe(pendingPartnerCerts)
+    db.craftedManualAllowKeys = {}
+    db.craftedManualAllowItemIds = {}
+    db._hcCraftedLockItemIdMigrated = true
 end
 
 local function OnChatLootCreate(_, msg)
@@ -299,14 +398,6 @@ local function OnChatLootCreate(_, msg)
     end
 end
 
-local function RegisterAddonPrefixCompat(prefix)
-    if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
-        C_ChatInfo.RegisterAddonMessagePrefix(prefix)
-    elseif RegisterAddonMessagePrefix then
-        RegisterAddonMessagePrefix(prefix)
-    end
-end
-
 local function SendAddonMessageCompat(prefix, msg, chatType, target)
     if C_ChatInfo and C_ChatInfo.SendAddonMessage then
         C_ChatInfo.SendAddonMessage(prefix, msg, chatType, target)
@@ -315,137 +406,135 @@ local function SendAddonMessageCompat(prefix, msg, chatType, target)
     end
 end
 
-function addon:CraftedLockOnInitialize()
-    RegisterAddonPrefixCompat(MSG_PREFIX)
-end
-
-local function SenderNorm(who)
-    local n, r = strsplit("-", who or "")
-    if r then
-        return NormPartner(n .. "-" .. r)
-    end
-    return NormPartner(who)
-end
-
-local function OnAddonMsg(prefix, msg, _, sender)
-    if prefix ~= MSG_PREFIX or not msg then return end
-    if not addon:CraftedLockIsDuo() then return end
+local function MergePartnerIdCsvIntoAllowlist(csv)
     local db = Db()
-    if NormPartner(db.craftedDuoPartner or "") == "" then return end
-    local myP = addon:CraftedLockPartnerNorm()
-    local s1 = SenderNorm(sender)
-    local s2 = SenderNorm(Ambiguate(sender, "short"))
-    if s1 ~= myP and s2 ~= myP then return end
-
-    if strsub(msg, 1, 2) == "K:" then
-        local enc = strsub(msg, 3)
-        local dec = enc:gsub("%*", ":")
-        if dec and dec ~= "" then
-            pendingPartnerCerts[dec] = GetTime()
-        end
-        return
-    end
-
-    local cmd, a, b = strsplit(":", msg, 3)
-    if cmd == "P" and a and b then
-        local itemId, uq = tonumber(a), tonumber(b)
-        if itemId and uq and uq > 0 then
-            pendingPartnerCerts[itemId .. ":" .. uq] = GetTime()
-        end
-    end
-end
-
-function addon:CraftedLockChatAddon(event, prefix, message, channel, sender)
-    OnAddonMsg(prefix, message, channel, sender)
-end
-
-local function MergePartnerCertsAfterTrade()
-    local db = Db()
-    if not addon:CraftedLockIsDuo() then return end
     EnsureTables(db)
-    for bag = BACKPACK_CONTAINER, NUM_BAG_FRAMES do
-        local n = GetContainerNumSlotsCompat(bag) or 0
-        for slot = 1, n do
-            local link = GetContainerItemLinkCompat(bag, slot)
-            if link then
-                local id = ItemIdFromLink(link)
-                local h = ItemHeaderFromLink(link)
-                local uq = UniqueFromHeader(h)
-                local ok = (h and pendingPartnerCerts[h]) or (id and pendingPartnerCerts[id .. ":" .. uq])
-                if ok and IsRestrictedEquipableCompat(id) then
-                    local key = ItemInstanceKeyFromLink(link)
-                    if key then
-                        db.partnerGiftedKeys[key] = true
-                    end
-                end
+    local added = 0
+    for piece in string.gmatch(csv or "", "[^,]+") do
+        local id = tonumber((piece:gsub("^%s+", ""):gsub("%s+$", "")))
+        if id and id > 0 then
+            if not db.craftedLockAllowedItemIds[id] then
+                added = added + 1
             end
+            db.craftedLockAllowedItemIds[id] = true
         end
     end
-    wipe(pendingPartnerCerts)
+    return added
 end
 
-local function TradePartnerUnitId()
-    if UnitExists("npc") then return "npc" end
-    return nil
+local function SortedAllowedItemIds(db)
+    local t = {}
+    for id, on in pairs(db.craftedLockAllowedItemIds) do
+        if on then
+            t[#t + 1] = id
+        end
+    end
+    table.sort(t)
+    return t
 end
 
-local function TradePartnerFullName()
-    local u = TradePartnerUnitId()
-    if not u then return nil end
-    return GetUnitName(u, true) or UnitName(u)
+local function BuildAllowListChunks(ids)
+    local chunks = {}
+    local cur = nil
+    for _, id in ipairs(ids) do
+        local p = tostring(id)
+        if not cur then
+            cur = p
+        elseif #cur + 1 + #p <= ALLOW_LIST_CHUNK then
+            cur = cur .. "," .. p
+        else
+            chunks[#chunks + 1] = cur
+            cur = p
+        end
+    end
+    if cur then
+        chunks[#chunks + 1] = cur
+    end
+    return chunks
 end
 
-local function PartnerNameMatchesTrade()
-    local p = NormPartner(Db().craftedDuoPartner or "")
-    if p == "" then return false end
-    local who = TradePartnerFullName()
-    if not who then return false end
-    local np = NormPartner(p)
-    return NormPartner(who) == np or NormPartner(Ambiguate(who, "short")) == np
-end
-
-local function TradeOfferCertScan()
+local function SendAllowListToTradePartner()
     if not addon:CraftedLockIsDuo() then return end
     if not PartnerNameMatchesTrade() then return end
     local who = TradePartnerFullName()
     if not who then return end
     EnsureTables(Db())
-    for i = 1, 8 do
-        local link = GetTradePlayerItemLink(i)
-        if link then
-            local id = ItemIdFromLink(link)
-            if id and IsRestrictedEquipableCompat(id) then
-                local key = ItemInstanceKeyFromLink(link)
-                if key and Db().craftedAllowedKeys[key] then
-                    local raw = ItemHeaderFromLink(link)
-                    if raw then
-                        local enc = raw:gsub(":", "*")
-                        if enc and #enc + 2 <= 250 then
-                            SendAddonMessageCompat(MSG_PREFIX, "K:" .. enc, "WHISPER", who)
-                        else
-                            local uq = UniqueFromHeader(raw)
-                            if uq > 0 then
-                                SendAddonMessageCompat(MSG_PREFIX, "P:" .. tostring(id) .. ":" .. tostring(uq), "WHISPER", who)
-                            end
-                        end
-                    end
-                end
-            end
-        end
+    local ids = SortedAllowedItemIds(Db())
+    local chunks = BuildAllowListChunks(ids)
+    if #chunks == 0 then
+        SendAddonMessageCompat(MSG_PREFIX, "C:1/1:", "WHISPER", who)
+        return
     end
+    local n = #chunks
+    for i, body in ipairs(chunks) do
+        SendAddonMessageCompat(MSG_PREFIX, "C:" .. i .. "/" .. n .. ":" .. body, "WHISPER", who)
+    end
+end
+
+function addon:CraftedLockOnInitialize()
+    if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
+        C_ChatInfo.RegisterAddonMessagePrefix(MSG_PREFIX)
+    elseif RegisterAddonMessagePrefix then
+        RegisterAddonMessagePrefix(MSG_PREFIX)
+    end
+end
+
+function addon:CraftedLockChatAddon(_, prefix, msg, _, sender)
+    if prefix ~= MSG_PREFIX or not msg or not addon:CraftedLockIsDuo() then return end
+    if NormPartner(Db().craftedDuoPartner or "") == "" then return end
+    if not PartnerAddonWhisperMatches(sender) then return end
+    if strsub(msg, 1, 2) ~= "C:" then return end
+    local idx, tot, payload = strmatch(strsub(msg, 3), "^(%d+)/(%d+):(.*)$")
+    idx, tot = tonumber(idx), tonumber(tot)
+    if not idx or not tot or idx < 1 or tot < 1 or idx > tot then return end
+    local sn = SenderNorm(sender)
+    if allowListRecv.total ~= tot or allowListRecv.fromNorm ~= sn then
+        ResetAllowListRecv()
+        allowListRecv.total = tot
+        allowListRecv.fromNorm = sn
+    end
+    allowListRecv.parts[idx] = payload or ""
+    for i = 1, tot do
+        if allowListRecv.parts[i] == nil then return end
+    end
+    local full = table.concat(allowListRecv.parts, ",")
+    ResetAllowListRecv()
+    local added = MergePartnerIdCsvIntoAllowlist(full)
+    if added > 0 then
+        print("|cff00ff00[HC]|r Crafted Lock: " .. tostring(added) .. " new allowed item ID(s) from your duo partner (merged lists).")
+    end
+    ScanEquipment()
+    if addon.UI and addon.UI.UpdateActive then
+        addon.UI:UpdateActive()
+    end
+end
+
+function addon:CraftedLockCountAllowedItemIds()
+    local db = Db()
+    EnsureTables(db)
+    local n = 0
+    for _ in pairs(db.craftedLockAllowedItemIds) do
+        n = n + 1
+    end
+    return n
 end
 
 local function MyTradeOfferGuard()
     if not addon:CraftedLockActive() then return end
     EnsureTables(Db())
+    local db = Db()
     for i = 1, 8 do
         local link = GetTradePlayerItemLink(i)
         if link then
             local id = ItemIdFromLink(link)
             if id and IsRestrictedEquipableCompat(id) then
-                local key = ItemInstanceKeyFromLink(link)
-                if key and not Db().craftedAllowedKeys[key] then
-                    UIErrorsFrame:AddMessage("Crafted Lock: remove crafted-only equipable items you did not craft from your trade.", 1, 0.25, 0.25)
+                if not db.craftedLockAllowedItemIds[id] then
+                    UIErrorsFrame:AddMessage(
+                        "Crafted Lock: remove equippable items that are not on your allowed ID list from the trade.",
+                        1,
+                        0.25,
+                        0.25
+                    )
                 end
             end
         end
@@ -484,37 +573,28 @@ function addon:CraftedLockOnEnable()
 
     self:RegisterEvent("CHAT_MSG_LOOT", OnChatLootCreate)
 
-    -- CHAT_MSG_ADDON: один обработчик на аддон в AceEvent — см. core/titles.lua (цепочка в OnTitlesAddonMsg).
-
     self:RegisterEvent("TRADE_SHOW", function()
-        tradeAcceptedFlag = false
-        wipe(pendingPartnerCerts)
+        ResetAllowListRecv()
+        if addon:CraftedLockActive() and addon:CraftedLockIsDuo() and PartnerNameMatchesTrade() then
+            C_Timer.After(0.15, function()
+                if addon:CraftedLockActive() and TradePartnerUnitId() and PartnerNameMatchesTrade() then
+                    SendAllowListToTradePartner()
+                end
+            end)
+        end
+    end)
+
+    self:RegisterEvent("TRADE_CLOSED", function()
+        ResetAllowListRecv()
     end)
 
     self:RegisterEvent("TRADE_PLAYER_ITEM_CHANGED", function()
         MyTradeOfferGuard()
-        TradeOfferCertScan()
     end)
 
     self:RegisterEvent("TRADE_ACCEPT_UPDATE", function()
         MyTradeOfferGuard()
-        TradeOfferCertScan()
     end)
-
-    self:RegisterEvent("TRADE_CLOSED", function()
-        if tradeAcceptedFlag then
-            MergePartnerCertsAfterTrade()
-        else
-            wipe(pendingPartnerCerts)
-        end
-        tradeAcceptedFlag = false
-    end)
-
-    if hooksecurefunc then
-        hooksecurefunc("AcceptTrade", function()
-            tradeAcceptedFlag = true
-        end)
-    end
 
     C_Timer.After(2, function()
         ScanEquipment()

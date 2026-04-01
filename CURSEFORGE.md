@@ -1,8 +1,4 @@
-# Hardcore Challenges — CurseForge / project page copy
-
-Use the sections below in your CurseForge **Description** (Markdown is supported). Trim or merge as you like.
-
----
+# Hardcore Challenges
 
 ## Summary
 
@@ -48,9 +44,5 @@ Uses **addon messages** only to exchange **title** and **challenge profile** met
 
 ## Support & source
 
-Issues and source: your **GitHub** or **repository** link (add here).  
+Issues and source: https://github.com/MaximEsin/HardcoreChallenges
 Latest **release zip** should be built with the included `scripts/make-release-zip.sh` so the archive is clean for CurseForge upload.
-
----
-
-*Replace the “Support & source” line with your real links before publishing.*

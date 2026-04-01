@@ -86,7 +86,12 @@
         "UnitFrame_Update",
         "UnitFactionGroup",
         "GetAddOnMetadata",
-        "UnitIsUnit"
+        "UnitIsUnit",
+        "GetFactionInfoByID",
+        "GetNumFactions",
+        "UnitRace",
+        "GetFactionInfo",
+        "PlaySoundFile"
     ],
     "cSpell.words": [
         "geterrorhandler",

@@ -17,6 +17,12 @@ local EXCLUDE_FROM_AUTO_60 = {
     LordOfTheRings = true,
     ScarletTabard = true,
     InDreams = true,
+    CorruptionEarthAndSeed = true,
+    ScarletMonastery = true,
+    Scholomance = true,
+    Uldaman = true,
+    ItsDangerousToGoAlone = true,
+    Exalted = true,
     OnyxiaAttuneHorde = true,
     OnyxiaAttuneAlliance = true,
 }

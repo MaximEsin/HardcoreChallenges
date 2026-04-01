@@ -113,6 +113,9 @@ function UI:ShowSelection()
 
         local function buildBodyText()
             local desc = challenge.description
+            if key == "Exalted" and addon.GetExaltedChallengeDescription then
+                desc = addon:GetExaltedChallengeDescription()
+            end
             local pts = "|cFFFFFF00+" .. challenge.points .. " points|r"
             local extra = ""
             if addon.IsSlayerChallengeKey and addon:IsSlayerChallengeKey(key) then

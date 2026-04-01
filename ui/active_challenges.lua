@@ -192,6 +192,9 @@ function UI:ShowActive()
             bodyFs:SetTextColor(r0, g0, b0)
 
             local desc = challenge.description
+            if key == "Exalted" and addon.GetExaltedChallengeDescription then
+                desc = addon:GetExaltedChallengeDescription()
+            end
             local pts = "|cFFFFFF00+" .. (challenge.points or 0) .. " points|r"
             local extra = ""
 
@@ -219,10 +222,10 @@ function UI:ShowActive()
                 local pn = db.craftedDuoPartner or ""
                 local nid = addon.CraftedLockCountAllowedItemIds and addon:CraftedLockCountAllowedItemIds() or 0
                 extra = "\n|cFFFFFF00Partner: " .. (pn ~= "" and pn or "(not set)") .. "|r"
-                    .. "\n|cFFFFFF00Allowed item IDs: " .. tostring(nid) .. "|r"
+                    .. "\n|cFFFFFF00Allow list: " .. tostring(nid) .. " items|r"
             elseif not isRemote and key == "CraftedLockedSolo" then
                 local nid = addon.CraftedLockCountAllowedItemIds and addon:CraftedLockCountAllowedItemIds() or 0
-                extra = "\n|cFFFFFF00Allowed item IDs: " .. tostring(nid) .. "|r"
+                extra = "\n|cFFFFFF00Allow list: " .. tostring(nid) .. " items|r"
             elseif not isRemote and key == "SingleSpec" then
                 local st = addon:GetSingleSpecTalentState()
                 if st.treeCount == 0 then

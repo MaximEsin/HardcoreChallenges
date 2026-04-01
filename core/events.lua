@@ -18,7 +18,15 @@ local SCARLET_TABARD_KEY = "ScarletTabard"
 local SCARLET_TABARD_ITEM_ID = 23192
 local NO_MOUNT_KEY = "NoMount"
 local NO_HEARTHSTONE_KEY = "NoHearthstone"
+local NO_WORLD_BUFFS_KEY = "NoWorldBuffs"
 local DUNGEON_ONCE_KEY = "DungeonOnce"
+-- Classic Era world buffs (spellId): Dragonslayer, Warchief, ZG heart
+local WORLD_BUFF_STRIP_SPELL_IDS = {
+    [22888] = true, -- Rallying Cry of the Dragonslayer (Onyxia / Nefarian head)
+    [16609] = true, -- Warchief's Blessing
+    [24425] = true, -- Spirit of Zandalar
+}
+local worldBuffStripMsgAt = 0
 -- Classic: Hearthstone (item) cast spell
 local HEARTHSTONE_SPELL_ID = 8690
 local lastKnownRingCount = 0
@@ -191,11 +199,21 @@ local function IsQuestCompletedById(questId)
     return false
 end
 
---- Квесты → зачёт в хаб (не на 60): turnedInQuestId = nil при PEW, иначе id квеста из QUEST_TURNED_IN.
+local UnitFactionGroupSafe = _G.UnitFactionGroup
+
+--- Квесты → зачёт в хаб при сдаче или при загрузке (PEW), если квест уже выполнен.
 local QUEST_HUB_CHALLENGES = {
     { key = "InDreams", questId = 5944, msg = "In Dreams challenge complete!" },
     { key = "OnyxiaAttuneHorde", questId = 6602, msg = "Onyxia Attunement (Horde) complete!" },
     { key = "OnyxiaAttuneAlliance", questId = 6502, msg = "Onyxia Attunement (Alliance) complete!" },
+    { key = "CorruptionEarthAndSeed", questId = 7064, faction = "Horde", msg = "Corruption of Earth and Seed challenge complete!" },
+    { key = "CorruptionEarthAndSeed", questId = 7065, faction = "Alliance", msg = "Corruption of Earth and Seed challenge complete!" },
+    { key = "ScarletMonastery", questId = 1048, faction = "Horde", msg = "Scarlet Monastery challenge complete!" },
+    { key = "ScarletMonastery", questId = 1053, faction = "Alliance", msg = "Scarlet Monastery challenge complete!" },
+    { key = "Scholomance", questId = 5466, msg = "Scholomance challenge complete!" },
+    { key = "Uldaman", questId = 2966, faction = "Horde", msg = "Uldaman challenge complete!" },
+    { key = "Uldaman", questId = 2946, faction = "Alliance", msg = "Uldaman challenge complete!" },
+    { key = "ItsDangerousToGoAlone", questId = 3962, msg = "It's Dangerous to Go Alone challenge complete!" },
 }
 
 local function CheckQuestHubChallenges(turnedInQuestId)
@@ -203,7 +221,9 @@ local function CheckQuestHubChallenges(turnedInQuestId)
     if not db.characterStarted then return end
     local turned = turnedInQuestId and tonumber(turnedInQuestId) or nil
     for _, row in ipairs(QUEST_HUB_CHALLENGES) do
-        if db.activeChallenges[row.key] and not db.failedChallenges[row.key] then
+        if row.faction and UnitFactionGroupSafe and UnitFactionGroupSafe("player") ~= row.faction then
+            -- faction-specific quest row
+        elseif db.activeChallenges[row.key] and not db.failedChallenges[row.key] then
             local done = (turned and turned == row.questId) or (not turned and IsQuestCompletedById(row.questId))
             if done then
                 local granted = addon:HubTryAddCompletion(row.key)
@@ -448,6 +468,36 @@ local function CheckSingleContinent(opts)
     end
 end
 
+local CancelUnitBuffSafe = _G.CancelUnitBuff
+
+local function StripNoWorldBuffsIfActive()
+    local db = addon.CharDB
+    if not db.characterStarted then return end
+    if not db.activeChallenges[NO_WORLD_BUFFS_KEY] or db.failedChallenges[NO_WORLD_BUFFS_KEY] then return end
+    if not CancelUnitBuffSafe then return end
+
+    local guard = 0
+    while guard < 30 do
+        guard = guard + 1
+        local removedOne = false
+        for i = 1, 40 do
+            local name, _, _, _, _, _, _, _, _, _, spellId = UnitBuff("player", i)
+            if not name then break end
+            if spellId and WORLD_BUFF_STRIP_SPELL_IDS[spellId] then
+                pcall(CancelUnitBuffSafe, "player", i)
+                removedOne = true
+                local now = GetTime()
+                if now - worldBuffStripMsgAt >= 3 then
+                    worldBuffStripMsgAt = now
+                    UIErrorsFrame:AddMessage("No World Buffs: removed forbidden world buff.", 1, 1, 0.6)
+                end
+                break
+            end
+        end
+        if not removedOne then break end
+    end
+end
+
 -- =========================
 -- 📡 EVENTS
 -- =========================
@@ -459,6 +509,10 @@ function addon:RunEnteringWorldChallengeChecks()
     local function runStableChecks()
         CheckSelfFound()
         CheckSingleContinent({ fromEnteringWorld = true })
+        StripNoWorldBuffsIfActive()
+        if addon.CheckExaltedChallenge then
+            addon:CheckExaltedChallenge()
+        end
     end
     local function runImmediate()
         CheckLordOfTheRingsFromBags(true)
@@ -466,6 +520,10 @@ function addon:RunEnteringWorldChallengeChecks()
         CheckQuestHubChallenges(nil)
         ScheduleDungeonOnceCheck()
         CheckNoMountChallenge()
+        StripNoWorldBuffsIfActive()
+        if addon.CheckExaltedChallenge then
+            addon:CheckExaltedChallenge()
+        end
     end
     runImmediate()
     if C_Timer and C_Timer.After then
@@ -479,7 +537,10 @@ function addon:RunEnteringWorldChallengeChecks()
 end
 
 addon:RegisterEvent("UNIT_AURA", function(_, unit)
-    if unit == "player" then CheckSelfFound() end
+    if unit == "player" then
+        CheckSelfFound()
+        StripNoWorldBuffsIfActive()
+    end
 end)
 
 addon:RegisterEvent("ZONE_CHANGED_NEW_AREA", function()

@@ -23,6 +23,7 @@ core\slayer.lua
 core\single_spec.lua
 core\crafted_lock.lua
 core\state.lua
+core\exalted.lua
 core\events.lua
 core\hub.lua
 core\titles.lua

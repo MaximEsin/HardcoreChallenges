@@ -263,7 +263,7 @@ local function RegisterCraftedLink(link)
     db.craftedLockAllowedItemIds[itemId] = true
     if isNew then
         local nm = GetItemInfo(itemId) or ("#" .. tostring(itemId))
-        print("|cff00ff00[HC]|r Crafted Lock: item ID " .. tostring(itemId) .. " (" .. nm .. ") added to your allowed list.")
+        print("|cff00ff00[HC]|r Crafted Lock: " .. tostring(nm) .. " added to your allowed list.")
     end
     ScanEquipment()
     if addon.UI and addon.UI.UpdateActive then
@@ -370,7 +370,7 @@ ScanEquipment = function()
             if id and IsEquippableItem(id) then
                 local key = ItemInstanceKeyFromLink(link)
                 if not AllowedToWearKey(key) then
-                    UIErrorsFrame:AddMessage("Crafted Lock: bags — only allowed item IDs.", 1, 0.25, 0.25)
+                    UIErrorsFrame:AddMessage("Crafted Lock: bags — only items on your allow list.", 1, 0.25, 0.25)
                     if StripEquipSlot(invSlot) then return end
                 end
             end
@@ -514,7 +514,7 @@ function addon:CraftedLockChatAddon(_, prefix, msg, _, sender)
     ResetAllowListRecv()
     local added = MergePartnerIdCsvIntoAllowlist(full)
     if added > 0 then
-        print("|cff00ff00[HC]|r Crafted Lock: " .. tostring(added) .. " new allowed item ID(s) from your duo partner (merged lists).")
+        print("|cff00ff00[HC]|r Crafted Lock: " .. tostring(added) .. " new item(s) merged from your duo partner.")
     end
     ScanEquipment()
     if addon.UI and addon.UI.UpdateActive then

@@ -1,0 +1,2 @@
+# Release artifacts (build with scripts/make-release-zip.sh; upload to CurseForge manually)
+HardcoreChallenges-*-release.zip

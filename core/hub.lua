@@ -44,12 +44,14 @@ function addon:HubAllBaseChallengesComplete()
 end
 
 --- Grants meta hub completion when every other challenge is in hub; no-op if not ready.
+--- @return boolean true if meta was just granted (caller may show toast; UI refresh calls must not toast).
 function addon:HubSyncMetaChallenge()
-    if not self.Challenges[META_KEY] then return end
+    if not self.Challenges[META_KEY] then return false end
     local hub = self:HubEnsure()
-    if hub.completedKeys[META_KEY] then return end
-    if not self:HubAllBaseChallengesComplete() then return end
+    if hub.completedKeys[META_KEY] then return false end
+    if not self:HubAllBaseChallengesComplete() then return false end
     hub.completedKeys[META_KEY] = true
+    return true
 end
 
 function addon:HubTryAddCompletion(key)
@@ -58,7 +60,12 @@ function addon:HubTryAddCompletion(key)
     local hub = self:HubEnsure()
     if hub.completedKeys[key] then return false end
     hub.completedKeys[key] = true
-    self:HubSyncMetaChallenge()
+    if self.EnqueueChallengeCompletionToast then
+        self:EnqueueChallengeCompletionToast(key)
+    end
+    if self:HubSyncMetaChallenge() and self.EnqueueChallengeCompletionToast then
+        self:EnqueueChallengeCompletionToast(META_KEY)
+    end
     if self.UI and self.UI.RefreshHub then
         self.UI:RefreshHub()
     end

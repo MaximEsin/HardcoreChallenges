@@ -1,7 +1,7 @@
 ## Interface: 11403, 11404, 11500, 11501, 11502, 11503, 11504, 11505, 11506, 11507, 11508
 ## Title: Hardcore Challenges
 ## Notes: Challenges for WoW Classic
-## Version: 1.2.3
+## Version: 1.3.0
 ## Author: aragain
 ## SavedVariables: HardcoreChallengesDB, HardcoreChallengesHubDB
 
@@ -25,6 +25,7 @@ core\crafted_lock.lua
 core\state.lua
 core\exalted.lua
 core\events.lua
+core\challenge_toast.lua
 core\hub.lua
 core\titles.lua
 

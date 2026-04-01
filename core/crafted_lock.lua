@@ -1,6 +1,7 @@
 -- core/crafted_lock.lua
 -- Crafted Locked (Solo / Duo): allow equipping gear whose itemId is on the character allowlist.
 -- Crafts add itemId automatically; duo merges allowlists with saved trade partner via addon whisper.
+-- Rings, neck, and trinkets are exempt (not craftable in Classic; any drop may be worn).
 
 local addon = HardcoreChallenges
 
@@ -10,6 +11,8 @@ local ALLOW_LIST_CHUNK = 220
 local EQUIP_SLOTS_NAKED_CHECK = {
     1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
 }
+--- INVSLOT_NECK / FINGER / TRINKET — not subject to allowlist on the character paperdoll.
+local CRAFTLOCK_JEWELRY_INV_SLOTS = { [2] = true, [11] = true, [12] = true, [13] = true, [14] = true }
 local BAG_EQUIP_SLOTS = { 20, 21, 22, 23 }
 
 local castBagSnapshot = nil
@@ -240,12 +243,22 @@ local function IsRestrictedEquipableCompat(itemId)
     return true
 end
 
+--- Armor/weapons/bags etc. that must appear on the allowlist; jewelry slots are unrestricted.
+local function IsCraftLockAllowlistRequired(itemId)
+    if not IsRestrictedEquipableCompat(itemId) then return false end
+    local srcInvType = select(10, GetItemInfo(itemId))
+    if srcInvType == "INVTYPE_FINGER" or srcInvType == "INVTYPE_NECK" or srcInvType == "INVTYPE_TRINKET" then
+        return false
+    end
+    return true
+end
+
 local function RegisterCraftedLink(link)
     if not addon:CraftedLockActive() then return end
     local db = Db()
     EnsureTables(db)
     local itemId = ItemIdFromLink(link)
-    if not itemId or not IsRestrictedEquipableCompat(itemId) then return end
+    if not itemId or not IsCraftLockAllowlistRequired(itemId) then return end
     local isNew = not db.craftedLockAllowedItemIds[itemId]
     db.craftedLockAllowedItemIds[itemId] = true
     if isNew then
@@ -337,7 +350,7 @@ ScanEquipment = function()
         local link = GetInventoryItemLink("player", invSlot)
         if link then
             local id = GetInventoryItemID("player", invSlot)
-            if IsRestrictedEquipableCompat(id) then
+            if not CRAFTLOCK_JEWELRY_INV_SLOTS[invSlot] and IsCraftLockAllowlistRequired(id) then
                 local key = ItemInstanceKeyFromLink(link)
                 if not AllowedToWearKey(key) then
                     UIErrorsFrame:AddMessage(
@@ -527,7 +540,7 @@ local function MyTradeOfferGuard()
         local link = GetTradePlayerItemLink(i)
         if link then
             local id = ItemIdFromLink(link)
-            if id and IsRestrictedEquipableCompat(id) then
+            if id and IsCraftLockAllowlistRequired(id) then
                 if not db.craftedLockAllowedItemIds[id] then
                     UIErrorsFrame:AddMessage(
                         "Crafted Lock: remove equippable items that are not on your allowed ID list from the trade.",

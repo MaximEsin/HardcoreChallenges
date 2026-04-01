@@ -83,7 +83,10 @@
         "PlayerFrame_Update",
         "FocusFrame_Update",
         "TargetFrame_Update",
-        "UnitFrame_Update"
+        "UnitFrame_Update",
+        "UnitFactionGroup",
+        "GetAddOnMetadata",
+        "UnitIsUnit"
     ],
     "cSpell.words": [
         "geterrorhandler",

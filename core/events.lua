@@ -558,4 +558,7 @@ end)
 
 addon:RegisterEvent("QUEST_TURNED_IN", function(_, questId)
     CheckQuestHubChallenges(questId)
+    if addon.RunStatsOnQuestTurnedIn then
+        addon:RunStatsOnQuestTurnedIn()
+    end
 end)

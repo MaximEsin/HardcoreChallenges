@@ -170,6 +170,9 @@ local function QueueKillProcessing(destGUID, sourceGUID, sourceFlags, destFlags)
     local function attempt()
         if slayerDeathCredited[dguid] then return end
         slayerDeathCredited[dguid] = true
+        if addon.RunStatsTryRegisterKill then
+            addon:RunStatsTryRegisterKill(dguid)
+        end
         if not TryIncrementSlayer() then
             slayerDeathCredited[dguid] = nil
             return

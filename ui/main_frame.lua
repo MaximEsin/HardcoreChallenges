@@ -302,6 +302,9 @@ function UI:ShowSelection()
             addon:SingleSpecOnChallengeStart()
         end
 
+        if addon.RunStatsOnChallengeStart then
+            addon:RunStatsOnChallengeStart()
+        end
         db.characterStarted = true
         root:Hide()
         UI:ShowActive()

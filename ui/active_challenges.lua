@@ -107,12 +107,21 @@ function UI:ShowActive()
     local tr, tg, tb = self.GetPlayerClassColor()
 
     local hubBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
-    hubBtn:SetSize(72, 22)
-    hubBtn:SetPoint("LEFT", foot, "LEFT", 14, -6)
+    hubBtn:SetSize(64, 22)
+    hubBtn:SetPoint("LEFT", foot, "LEFT", 10, -6)
     hubBtn:SetText("Hub")
     hubBtn:SetScript("OnClick", function()
         UI:ShowHub()
     end)
+
+    local statsBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
+    statsBtn:SetSize(64, 22)
+    statsBtn:SetPoint("LEFT", hubBtn, "RIGHT", 6, 0)
+    statsBtn:SetText("Stats")
+    statsBtn:SetScript("OnClick", function()
+        UI:ShowRunStats()
+    end)
+    root._statsBtn = statsBtn
 
     local pointsLabel = foot:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
     pointsLabel:SetPoint("CENTER", foot, "CENTER", 0, 12)
@@ -288,8 +297,8 @@ function UI:ShowActive()
     end
 
     local viewBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
-    viewBtn:SetSize(96, 22)
-    viewBtn:SetPoint("LEFT", hubBtn, "RIGHT", 8, 0)
+    viewBtn:SetSize(88, 22)
+    viewBtn:SetPoint("LEFT", statsBtn, "RIGHT", 6, 0)
     root._viewBtn = viewBtn
 
     local function selectedPointsFromMap(map)
@@ -306,6 +315,9 @@ function UI:ShowActive()
         local profile = root._challengesViewMode == VIEW_TARGET and addon:GetRemoteProfileByName(root._challengesViewName) or nil
         if profile then
             viewBtn:SetText("Self")
+            if root._statsBtn then
+                root._statsBtn:Hide()
+            end
             if root._pointsFooter then
                 root._pointsFooter:SetText("|cFFFFFF00Selected points (" .. (root._challengesViewName or "?") .. "): "
                     .. selectedPointsFromMap(profile.activeChallenges) .. "|r")
@@ -314,6 +326,9 @@ function UI:ShowActive()
             root._challengesViewMode = VIEW_SELF
             root._challengesViewName = nil
             viewBtn:SetText("Target")
+            if root._statsBtn then
+                root._statsBtn:Show()
+            end
             if root._pointsFooter then
                 root._pointsFooter:SetText("|cFFFFFF00Total points: " .. addon:GetPoints() .. "|r")
             end
@@ -365,5 +380,8 @@ function UI:UpdateActive()
     end
     if root._currentTab == "titles" and root._layoutTitles then
         root._layoutTitles()
+    end
+    if self.RefreshRunStats then
+        self:RefreshRunStats()
     end
 end

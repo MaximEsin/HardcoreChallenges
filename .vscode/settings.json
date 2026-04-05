@@ -96,7 +96,8 @@
         "StaticPopupDialogs",
         "StaticPopup_Show",
         "YES",
-        "NO"
+        "NO",
+        "GetMoney"
     ],
     "cSpell.words": [
         "geterrorhandler",

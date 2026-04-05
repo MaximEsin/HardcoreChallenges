@@ -37,6 +37,9 @@ function addon:InitDB()
         craftedAllowedKeys = {},
         partnerGiftedKeys = {},
         slayer1KillCount = 0,
+        statMobsKilled = 0,
+        statQuestsCompleted = 0,
+        statGoldEarnedCopper = 0,
         selectedDisplayTitleKey = nil,
         dungeonOnceSeenMapIds = {},
         dungeonOnceInsideMapId = nil,
@@ -51,6 +54,9 @@ function addon:OnInitialize()
     self:InitDB()
     self.CharDB.dungeonOnceSeenMapIds = self.CharDB.dungeonOnceSeenMapIds or {}
     self.CharDB.slayer1KillCount = self.CharDB.slayer1KillCount or 0
+    self.CharDB.statMobsKilled = self.CharDB.statMobsKilled or 0
+    self.CharDB.statQuestsCompleted = self.CharDB.statQuestsCompleted or 0
+    self.CharDB.statGoldEarnedCopper = self.CharDB.statGoldEarnedCopper or 0
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
         C_ChatInfo.RegisterAddonMessagePrefix("HCChallenges")
     elseif RegisterAddonMessagePrefix then
@@ -79,6 +85,9 @@ function addon:ResetCharacter()
     db.craftedManualAllowItemIds = {}
     db._hcCraftedLockItemIdMigrated = nil
     db.slayer1KillCount = 0
+    db.statMobsKilled = 0
+    db.statQuestsCompleted = 0
+    db.statGoldEarnedCopper = 0
     db.selectedDisplayTitleKey = nil
     db.dungeonOnceSeenMapIds = {}
     db.dungeonOnceInsideMapId = nil
@@ -97,6 +106,12 @@ function addon:ResetCharacter()
         self.UI.activeWindow = nil
     end
 
+    if self.UI.runStatsWindow then
+        self.UI.runStatsWindow:Hide()
+        self.UI.runStatsWindow:SetParent(nil)
+        self.UI.runStatsWindow = nil
+    end
+
     if self.UI.hubWindow then
         self.UI.hubWindow:Hide()
     end
@@ -107,6 +122,9 @@ end
     - показывает окно активных челленджей, если персонаж уже стартовал
 ]]
 function addon:OnEnable()
+    if self.RunStatsOnEnable then
+        self:RunStatsOnEnable()
+    end
     if self.CraftedLockOnEnable then
         self:CraftedLockOnEnable()
     end

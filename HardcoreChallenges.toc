@@ -19,6 +19,7 @@ libs\LibDBIcon-1.0\LibDBIcon-1.0\LibDBIcon-1.0.lua
 core\init.lua
 db.lua
 core\challenges.lua
+core\run_stats.lua
 core\slayer.lua
 core\single_spec.lua
 core\crafted_lock.lua
@@ -32,6 +33,7 @@ core\titles.lua
 # ===== UI =====
 ui\chrome.lua
 ui\titles_panel.lua
+ui\run_stats_frame.lua
 ui\active_challenges.lua
 ui\hub_frame.lua
 ui\main_frame.lua

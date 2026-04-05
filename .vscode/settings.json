@@ -91,7 +91,12 @@
         "GetNumFactions",
         "UnitRace",
         "GetFactionInfo",
-        "PlaySoundFile"
+        "PlaySoundFile",
+        "C_Item",
+        "StaticPopupDialogs",
+        "StaticPopup_Show",
+        "YES",
+        "NO"
     ],
     "cSpell.words": [
         "geterrorhandler",

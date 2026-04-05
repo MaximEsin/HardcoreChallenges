@@ -18,6 +18,33 @@ local function EnsureMinimapDb()
     return db.minimap
 end
 
+--- Сколько из явно выбранных (activeChallenges) челленджей уже засчитаны в хабе; логика как в active_challenges.
+local function GetSelectedChallengesCompletionCounts()
+    local db = addon.CharDB
+    if not db or not addon.Challenges then return 0, 0 end
+    db.activeChallenges = db.activeChallenges or {}
+    db.failedChallenges = db.failedChallenges or {}
+    local hub = addon:HubEnsure()
+    local total, done = 0, 0
+    for key, challenge in pairs(addon.Challenges) do
+        if not challenge.hubOnly and db.activeChallenges[key] then
+            total = total + 1
+            if db.failedChallenges[key] then
+                -- failed: not complete
+            elseif hub.completedKeys[key] then
+                done = done + 1
+            elseif addon.IsSlayerChallengeKey and addon:IsSlayerChallengeKey(key) then
+                local cur = select(1, addon:GetSlayerProgressDisplay(key))
+                local goal = addon.GetSlayerGoal and addon:GetSlayerGoal() or 10000
+                if cur >= goal then
+                    done = done + 1
+                end
+            end
+        end
+    end
+    return done, total
+end
+
 --- Вызывать из PLAYER_ENTERING_WORLD (см. core/titles.lua + init OnEnable).
 --- Нельзя отдельно RegisterEvent("PLAYER_ENTERING_WORLD") здесь: в AceEvent один обработчик на событие на аддон.
 function addon:EnsureMinimapButton()
@@ -55,6 +82,10 @@ function addon:EnsureMinimapButton()
             end,
             OnTooltipShow = function(tt)
                 tt:AddLine("Hardcore Challenges")
+                local done, total = GetSelectedChallengesCompletionCounts()
+                if total > 0 then
+                    tt:AddLine(string.format("%d/%d completed", done, total), 0.75, 0.9, 0.75)
+                end
                 if addon:IsChallengeConfigureLevel() then
                     tt:AddLine("Click to choose challenges (level 1) or view your run", 1, 1, 1)
                 elseif addon.CharDB and addon.CharDB.characterStarted then

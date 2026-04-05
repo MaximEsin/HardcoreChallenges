@@ -6,6 +6,144 @@ local VIEW_SELF = "self"
 local VIEW_TARGET = "target"
 local UnitIsUnitSafe = _G.UnitIsUnit
 
+local SORT_STATUS_ORDER = { "default", "failed_first", "complete_first" }
+local SORT_POINTS_ORDER = { "none", "high_low", "low_high" }
+
+local SORT_STATUS_BTN = {
+    default = "Status: default",
+    failed_first = "Status: failed | active | done",
+    complete_first = "Status: done | active | failed",
+}
+
+local SORT_STATUS_TIP = {
+    default = "Category order, then challenge name (default).",
+    failed_first = "Failed challenges first, then active, then completed.",
+    complete_first = "Completed first, then active, then failed.",
+}
+
+local SORT_POINTS_BTN = {
+    none = "Points: default",
+    high_low = "Points: high to low",
+    low_high = "Points: low to high",
+}
+
+local SORT_POINTS_TIP = {
+    none = "Tiebreaker: challenge name (when status sort is default, keeps category name order).",
+    high_low = "More points first (after status order, if any).",
+    low_high = "Fewer points first (after status order, if any).",
+}
+
+local function CycleSortMode(current, order)
+    for i, v in ipairs(order) do
+        if v == current then
+            return order[(i % #order) + 1]
+        end
+    end
+    return order[1]
+end
+
+local function NormalizeStatusSortMode(m)
+    if m == "failed_first" or m == "complete_first" then return m end
+    return "default"
+end
+
+local function NormalizePointsSortMode(m)
+    if m == "high_low" or m == "low_high" then return m end
+    return "none"
+end
+
+local function ChallengeRowComplete(key, db, profile, isRemote)
+    if isRemote then
+        return profile and profile.hubCompletedKeys and profile.hubCompletedKeys[key] and true or false
+    end
+    if addon:HubEnsure().completedKeys[key] then return true end
+    if addon.IsSlayerChallengeKey and addon:IsSlayerChallengeKey(key) then
+        local cur = select(1, addon:GetSlayerProgressDisplay(key))
+        local goal = addon.GetSlayerGoal and addon:GetSlayerGoal() or 10000
+        return cur >= goal
+    end
+    return false
+end
+
+local function ChallengeRowFailed(key, db, isRemote)
+    if isRemote then return false end
+    return db.failedChallenges[key] and true or false
+end
+
+local function StatusSortRank(key, statusMode, db, profile, isRemote)
+    if statusMode == "default" then return 0 end
+    local failed = ChallengeRowFailed(key, db, isRemote)
+    local complete = ChallengeRowComplete(key, db, profile, isRemote)
+    if statusMode == "failed_first" then
+        if failed then return 1 end
+        if complete then return 3 end
+        return 2
+    end
+    if statusMode == "complete_first" then
+        if complete then return 1 end
+        if failed then return 3 end
+        return 2
+    end
+    return 0
+end
+
+local function ChallengePoints(key)
+    return (addon.Challenges[key] and addon.Challenges[key].points) or 0
+end
+
+local function ChallengeName(key)
+    local c = addon.Challenges[key]
+    return (c and c.name) or tostring(key)
+end
+
+local function CollectActiveKeysInSection(sec, activeMap)
+    local out = {}
+    for _, key in ipairs(sec.keys) do
+        if activeMap[key] then
+            out[#out + 1] = key
+        end
+    end
+    return out
+end
+
+local function SortActiveKeysInSection(keys, statusMode, pointsMode, db, profile, isRemote)
+    if #keys <= 1 then return end
+    if statusMode == "default" and pointsMode == "none" then return end
+    table.sort(keys, function(a, b)
+        if statusMode ~= "default" then
+            local sa = StatusSortRank(a, statusMode, db, profile, isRemote)
+            local sb = StatusSortRank(b, statusMode, db, profile, isRemote)
+            if sa ~= sb then
+                return sa < sb
+            end
+        end
+        if pointsMode == "high_low" then
+            local pa, pb = ChallengePoints(a), ChallengePoints(b)
+            if pa ~= pb then return pa > pb end
+        elseif pointsMode == "low_high" then
+            local pa, pb = ChallengePoints(a), ChallengePoints(b)
+            if pa ~= pb then return pa < pb end
+        end
+        return ChallengeName(a) < ChallengeName(b)
+    end)
+end
+
+local function AttachActiveWindowButtonTooltip(btn, title, bodyText, hintText)
+    hintText = hintText or "Click to use."
+    btn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT")
+        GameTooltip:AddLine(title, 1, 1, 1)
+        if bodyText and bodyText ~= "" then
+            GameTooltip:AddLine(bodyText, 0.85, 0.85, 0.85, true)
+        end
+        GameTooltip:AddLine(hintText, 0.6, 0.6, 0.6, true)
+        GameTooltip:Show()
+    end)
+    btn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+end
+
 function UI:ShowActive()
     local db = addon.CharDB
     if not db.characterStarted then
@@ -18,6 +156,9 @@ function UI:ShowActive()
 
     if self.activeWindow then
         self:UpdateActive()
+        if self.activeWindow._refreshSortButtonLabels then
+            self.activeWindow:_refreshSortButtonLabels()
+        end
         self.activeWindow:Show()
         self.activeWindow:RefreshTheme()
         return
@@ -28,7 +169,7 @@ function UI:ShowActive()
         name = frameName,
         title = "Active Challenges",
         width = 468,
-        height = 480,
+        height = 508,
     })
 
     _G[frameName] = root
@@ -40,8 +181,13 @@ function UI:ShowActive()
     tabBar:SetPoint("TOPLEFT", body, "TOPLEFT", 0, 0)
     tabBar:SetPoint("TOPRIGHT", body, "TOPRIGHT", 0, 0)
 
+    local filterBar = CreateFrame("Frame", nil, body)
+    filterBar:SetHeight(26)
+    filterBar:SetPoint("TOPLEFT", tabBar, "BOTTOMLEFT", 0, -2)
+    filterBar:SetPoint("TOPRIGHT", tabBar, "BOTTOMRIGHT", 0, -2)
+
     local panelHost = CreateFrame("Frame", nil, body)
-    panelHost:SetPoint("TOPLEFT", tabBar, "BOTTOMLEFT", 0, -4)
+    panelHost:SetPoint("TOPLEFT", filterBar, "BOTTOMLEFT", 0, -4)
     panelHost:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", 0, 0)
     root._challengesViewMode = VIEW_SELF
     root._challengesViewName = nil
@@ -79,9 +225,11 @@ function UI:ShowActive()
         if which == "challenges" then
             scroll:Show()
             titlesScroll:Hide()
+            filterBar:Show()
         else
             scroll:Hide()
             titlesScroll:Show()
+            filterBar:Hide()
             if root._layoutTitles then
                 root._layoutTitles()
             end
@@ -95,7 +243,86 @@ function UI:ShowActive()
     btnTitles:SetScript("OnClick", function()
         showTab("titles")
     end)
+    AttachActiveWindowButtonTooltip(
+        btnChallenges,
+        "Challenges",
+        "Your active challenges with descriptions, progress, and status (failed, active, or complete)."
+    )
+    AttachActiveWindowButtonTooltip(
+        btnTitles,
+        "Titles",
+        "Display titles you can show above your character name (account unlocks and selection)."
+    )
     showTab("challenges")
+
+    local btnSortStatus = CreateFrame("Button", nil, filterBar, "UIPanelButtonTemplate")
+    btnSortStatus:SetHeight(22)
+    btnSortStatus:SetPoint("TOPLEFT", filterBar, "TOPLEFT", 2, -2)
+    btnSortStatus:SetPoint("TOPRIGHT", filterBar, "TOP", -3, -2)
+    local btnSortPoints = CreateFrame("Button", nil, filterBar, "UIPanelButtonTemplate")
+    btnSortPoints:SetHeight(22)
+    btnSortPoints:SetPoint("TOPLEFT", filterBar, "TOP", 3, -2)
+    btnSortPoints:SetPoint("TOPRIGHT", filterBar, "TOPRIGHT", -2, -2)
+    root._btnSortStatus = btnSortStatus
+    root._btnSortPoints = btnSortPoints
+
+    btnSortStatus:SetScript("OnEnter", function(self)
+        local db = addon.CharDB
+        local sm = NormalizeStatusSortMode(db and db.activeChallengesSortStatus)
+        GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT")
+        GameTooltip:AddLine("Sort by status", 1, 1, 1)
+        GameTooltip:AddLine(SORT_STATUS_TIP[sm] or "", 0.85, 0.85, 0.85, true)
+        GameTooltip:AddLine("Click to cycle options.", 0.6, 0.6, 0.6, true)
+        GameTooltip:Show()
+    end)
+    btnSortStatus:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    btnSortPoints:SetScript("OnEnter", function(self)
+        local db = addon.CharDB
+        local pm = NormalizePointsSortMode(db and db.activeChallengesSortPoints)
+        GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT")
+        GameTooltip:AddLine("Sort by points", 1, 1, 1)
+        GameTooltip:AddLine(SORT_POINTS_TIP[pm] or "", 0.85, 0.85, 0.85, true)
+        GameTooltip:AddLine("Click to cycle options.", 0.6, 0.6, 0.6, true)
+        GameTooltip:Show()
+    end)
+    btnSortPoints:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+
+    function root._refreshSortButtonLabels()
+        local db = addon.CharDB
+        if not db then return end
+        local sm = NormalizeStatusSortMode(db.activeChallengesSortStatus)
+        local pm = NormalizePointsSortMode(db.activeChallengesSortPoints)
+        db.activeChallengesSortStatus = sm
+        db.activeChallengesSortPoints = pm
+        btnSortStatus:SetText(SORT_STATUS_BTN[sm] or SORT_STATUS_BTN.default)
+        btnSortPoints:SetText(SORT_POINTS_BTN[pm] or SORT_POINTS_BTN.none)
+    end
+
+    btnSortStatus:SetScript("OnClick", function()
+        local db = addon.CharDB
+        if not db then return end
+        db.activeChallengesSortStatus = CycleSortMode(
+            NormalizeStatusSortMode(db.activeChallengesSortStatus),
+            SORT_STATUS_ORDER
+        )
+        root._refreshSortButtonLabels()
+        root._layoutRows()
+    end)
+    btnSortPoints:SetScript("OnClick", function()
+        local db = addon.CharDB
+        if not db then return end
+        db.activeChallengesSortPoints = CycleSortMode(
+            NormalizePointsSortMode(db.activeChallengesSortPoints),
+            SORT_POINTS_ORDER
+        )
+        root._refreshSortButtonLabels()
+        root._layoutRows()
+    end)
+    root._refreshSortButtonLabels()
 
     function root._layoutTitles()
         UI:LayoutTitlesTab(root._titlesContent)
@@ -113,6 +340,11 @@ function UI:ShowActive()
     hubBtn:SetScript("OnClick", function()
         UI:ShowHub()
     end)
+    AttachActiveWindowButtonTooltip(
+        hubBtn,
+        "Account Hub",
+        "Account-wide completed challenges, total points, and meta progress."
+    )
 
     local statsBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
     statsBtn:SetSize(64, 22)
@@ -121,6 +353,11 @@ function UI:ShowActive()
     statsBtn:SetScript("OnClick", function()
         UI:ShowRunStats()
     end)
+    AttachActiveWindowButtonTooltip(
+        statsBtn,
+        "Run statistics",
+        "This character's run: mobs killed, quests turned in, and gold acquired (tracked by the addon since run start)."
+    )
     root._statsBtn = statsBtn
 
     local pointsLabel = foot:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
@@ -144,6 +381,10 @@ function UI:ShowActive()
 
         local y = -6
         local sections = UI.GetChallengeSections()
+        local statusSortMode = NormalizeStatusSortMode(db.activeChallengesSortStatus)
+        local pointsSortMode = NormalizePointsSortMode(db.activeChallengesSortPoints)
+        db.activeChallengesSortStatus = statusSortMode
+        db.activeChallengesSortPoints = pointsSortMode
 
         for _, sec in ipairs(sections) do
             local anyInSec = false
@@ -171,8 +412,9 @@ function UI:ShowActive()
             hdr:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 0, y)
             y = y - hh - 2
 
-        for _, key in ipairs(sec.keys) do
-            if activeMap[key] then
+            local rowKeys = CollectActiveKeysInSection(sec, activeMap)
+            SortActiveKeysInSection(rowKeys, statusSortMode, pointsSortMode, db, profile, isRemote)
+            for _, key in ipairs(rowKeys) do
             local challenge = addon.Challenges[key]
             if challenge then
 
@@ -281,7 +523,6 @@ function UI:ShowActive()
 
             end
             end
-        end
             end
         end
 
@@ -364,6 +605,33 @@ function UI:ShowActive()
             UIErrorsFrame:AddMessage("Target another player first.", 1, 0.4, 0)
         end
     end)
+    viewBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT")
+        if root._challengesViewMode == VIEW_TARGET then
+            GameTooltip:AddLine("Self view", 1, 1, 1)
+            GameTooltip:AddLine(
+                "Return to your challenges, sort filters, and your account points total in the footer.",
+                0.85,
+                0.85,
+                0.85,
+                true
+            )
+        else
+            GameTooltip:AddLine("Target view", 1, 1, 1)
+            GameTooltip:AddLine(
+                "Target another player who uses this addon, then click to load their shared challenges and hub completions.",
+                0.85,
+                0.85,
+                0.85,
+                true
+            )
+        end
+        GameTooltip:AddLine("Click to use.", 0.6, 0.6, 0.6, true)
+        GameTooltip:Show()
+    end)
+    viewBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
     refreshViewModeLabel()
 
     self.activeWindow = root
@@ -373,6 +641,9 @@ function UI:UpdateActive()
     local root = self.activeWindow
     if not root or not root._layoutRows then return end
     root._layoutRows()
+    if root._refreshSortButtonLabels then
+        root:_refreshSortButtonLabels()
+    end
     if root._refreshViewModeLabel then
         root._refreshViewModeLabel()
     elseif root._pointsFooter then

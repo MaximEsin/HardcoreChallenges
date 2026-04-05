@@ -40,6 +40,8 @@ function addon:InitDB()
         statMobsKilled = 0,
         statQuestsCompleted = 0,
         statGoldEarnedCopper = 0,
+        activeChallengesSortStatus = "default",
+        activeChallengesSortPoints = "none",
         selectedDisplayTitleKey = nil,
         dungeonOnceSeenMapIds = {},
         dungeonOnceInsideMapId = nil,
@@ -57,6 +59,12 @@ function addon:OnInitialize()
     self.CharDB.statMobsKilled = self.CharDB.statMobsKilled or 0
     self.CharDB.statQuestsCompleted = self.CharDB.statQuestsCompleted or 0
     self.CharDB.statGoldEarnedCopper = self.CharDB.statGoldEarnedCopper or 0
+    if type(self.CharDB.activeChallengesSortStatus) ~= "string" then
+        self.CharDB.activeChallengesSortStatus = "default"
+    end
+    if type(self.CharDB.activeChallengesSortPoints) ~= "string" then
+        self.CharDB.activeChallengesSortPoints = "none"
+    end
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
         C_ChatInfo.RegisterAddonMessagePrefix("HCChallenges")
     elseif RegisterAddonMessagePrefix then
@@ -88,6 +96,8 @@ function addon:ResetCharacter()
     db.statMobsKilled = 0
     db.statQuestsCompleted = 0
     db.statGoldEarnedCopper = 0
+    db.activeChallengesSortStatus = "default"
+    db.activeChallengesSortPoints = "none"
     db.selectedDisplayTitleKey = nil
     db.dungeonOnceSeenMapIds = {}
     db.dungeonOnceInsideMapId = nil

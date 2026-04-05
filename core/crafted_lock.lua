@@ -2,6 +2,7 @@
 -- Crafted Locked (Solo / Duo): allow equipping gear whose itemId is on the character allowlist.
 -- Crafts add itemId automatically; duo merges allowlists with saved trade partner via addon whisper.
 -- Rings, neck, and trinkets are exempt (not craftable in Classic; any drop may be worn).
+-- Fishing poles are exempt (profession tools; not player-crafted).
 
 local addon = HardcoreChallenges
 
@@ -243,9 +244,30 @@ local function IsRestrictedEquipableCompat(itemId)
     return true
 end
 
+--- Weapon class + fishing-pole subclass (Classic / retail align on 2 / 20).
+local ITEM_CLASS_WEAPON = 2
+local ITEM_SUBCLASS_FISHING_POLE = 20
+
+local function IsItemFishingPole(itemId)
+    if not itemId then return false end
+    local classId = select(12, GetItemInfo(itemId))
+    local subClassId = select(13, GetItemInfo(itemId))
+    if classId and subClassId then
+        return classId == ITEM_CLASS_WEAPON and subClassId == ITEM_SUBCLASS_FISHING_POLE
+    end
+    if C_Item and C_Item.GetItemInfoInstant then
+        local inst = C_Item.GetItemInfoInstant(itemId)
+        if inst and inst.classID and inst.subClassID then
+            return inst.classID == ITEM_CLASS_WEAPON and inst.subClassID == ITEM_SUBCLASS_FISHING_POLE
+        end
+    end
+    return false
+end
+
 --- Armor/weapons/bags etc. that must appear on the allowlist; jewelry slots are unrestricted.
 local function IsCraftLockAllowlistRequired(itemId)
     if not IsRestrictedEquipableCompat(itemId) then return false end
+    if IsItemFishingPole(itemId) then return false end
     local srcInvType = select(10, GetItemInfo(itemId))
     if srcInvType == "INVTYPE_FINGER" or srcInvType == "INVTYPE_NECK" or srcInvType == "INVTYPE_TRINKET" then
         return false

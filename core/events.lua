@@ -31,6 +31,8 @@ local worldBuffStripMsgAt = 0
 local HEARTHSTONE_SPELL_ID = 8690
 local lastKnownRingCount = 0
 local dungeonOnceDebounce
+-- Self Found: aura APIs often lie briefly after zoning / instances; never fail instantly on UNIT_AURA.
+local selfFoundFailTimer
 local GetSubZoneTextSafe = _G.GetSubZoneText
 local GetRealZoneTextSafe = _G.GetRealZoneText
 local GetZoneTextSafe = _G.GetZoneText
@@ -412,16 +414,53 @@ end)
 -- =========================
 -- 🔥 SELF FOUND
 -- =========================
-local function CheckSelfFound()
+local function FailSelfFoundNow()
+    local db = addon.CharDB
+    if not db.activeChallenges["SelfFound"] or db.failedChallenges["SelfFound"] then return end
+    db.failedChallenges["SelfFound"] = true
+    db._sfStableMissingN = 0
+    UIErrorsFrame:AddMessage("Self Found challenge failed!", 1, 0, 0)
+    if UI.activeWindow then UI:UpdateActive() end
+end
+
+--- After PEW: same idea as Single Continent — need two stable samples without buff before failing.
+local function CheckSelfFoundStable()
     local db = addon.CharDB
     if not db.activeChallenges["SelfFound"] then return end
     if db.failedChallenges["SelfFound"] then return end
-
-    if not addon:HasSelfFoundBuff() then
-        db.failedChallenges["SelfFound"] = true
-        UIErrorsFrame:AddMessage("Self Found challenge failed!", 1, 0, 0)
-        if UI.activeWindow then UI:UpdateActive() end
+    if addon:HasSelfFoundBuff() then
+        db._sfStableMissingN = 0
+        return
     end
+    db._sfStableMissingN = (db._sfStableMissingN or 0) + 1
+    if db._sfStableMissingN >= 2 then
+        FailSelfFoundNow()
+    end
+end
+
+local function ScheduleSelfFoundAuraRecheck()
+    local db = addon.CharDB
+    if not db.activeChallenges["SelfFound"] or db.failedChallenges["SelfFound"] then return end
+    if addon:HasSelfFoundBuff() then
+        if selfFoundFailTimer and selfFoundFailTimer.Cancel then
+            selfFoundFailTimer:Cancel()
+        end
+        selfFoundFailTimer = nil
+        db._sfStableMissingN = 0
+        return
+    end
+    if not (C_Timer and C_Timer.NewTimer) then
+        return
+    end
+    if selfFoundFailTimer and selfFoundFailTimer.Cancel then
+        selfFoundFailTimer:Cancel()
+    end
+    selfFoundFailTimer = C_Timer.NewTimer(0.9, function()
+        selfFoundFailTimer = nil
+        if not db.activeChallenges["SelfFound"] or db.failedChallenges["SelfFound"] then return end
+        if addon:HasSelfFoundBuff() then return end
+        FailSelfFoundNow()
+    end)
 end
 
 -- =========================
@@ -505,9 +544,14 @@ end
 function addon:RunEnteringWorldChallengeChecks()
     local db = addon.CharDB
     db._scPewMismatchN = 0
-    -- Self Found + Single Continent: auras/map often stale right after PEW; Single Continent needs 2 agreeing samples.
+    db._sfStableMissingN = 0
+    if selfFoundFailTimer and selfFoundFailTimer.Cancel then
+        selfFoundFailTimer:Cancel()
+    end
+    selfFoundFailTimer = nil
+    -- Self Found + Single Continent: auras/map often stale right after PEW; both use delayed / multi-sample logic.
     local function runStableChecks()
-        CheckSelfFound()
+        CheckSelfFoundStable()
         CheckSingleContinent({ fromEnteringWorld = true })
         StripNoWorldBuffsIfActive()
         if addon.CheckExaltedChallenge then
@@ -538,7 +582,7 @@ end
 
 addon:RegisterEvent("UNIT_AURA", function(_, unit)
     if unit == "player" then
-        CheckSelfFound()
+        ScheduleSelfFoundAuraRecheck()
         StripNoWorldBuffsIfActive()
     end
 end)

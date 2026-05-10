@@ -192,6 +192,15 @@ local function PickupContainerItemCompat(bag, slot)
     end
 end
 
+local function IsProfessionCraftContext()
+    local frames = { "TradeSkillFrame", "CraftFrame", "ProfessionsFrame", "ProfessionsBookFrame" }
+    for i = 1, #frames do
+        local f = _G[frames[i]]
+        if f and f.IsShown and f:IsShown() then return true end
+    end
+    return false
+end
+
 local function BagSnapshot()
     local snap = {}
     for bag = BACKPACK_CONTAINER, NUM_BAG_FRAMES do
@@ -234,7 +243,9 @@ local function IsRestrictedEquipableCompat(itemId)
     if not IsEquippableItem(itemId) then return false end
     local _, _, _, _, _, _, _, _, _, srcInvType, _, clsId = GetItemInfo(itemId)
     if clsId == nil then
-        return IsEquippableItem(itemId)
+        -- Item data not in client cache yet. Return false (skip) to avoid false
+        -- positives: without clsId we can't distinguish jewelry/consumables from gear.
+        return false
     end
     local CONS, TRADE, RECIPE, REAGENT, PROJECTILE = 0, 7, 9, 5, 6
     if clsId == CONS or clsId == TRADE or clsId == RECIPE or clsId == REAGENT or clsId == PROJECTILE then
@@ -586,6 +597,7 @@ function addon:CraftedLockOnEnable()
 
     self:RegisterEvent("UNIT_SPELLCAST_START", function(_, unit)
         if unit ~= "player" or not addon:CraftedLockActive() then return end
+        if not IsProfessionCraftContext() then return end
         castBagSnapshot = BagSnapshot()
     end)
 
@@ -603,6 +615,10 @@ function addon:CraftedLockOnEnable()
     end)
 
     self:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED", function(_, unit)
+        if unit == "player" then castBagSnapshot = nil end
+    end)
+
+    self:RegisterEvent("UNIT_SPELLCAST_FAILED", function(_, unit)
         if unit == "player" then castBagSnapshot = nil end
     end)
 

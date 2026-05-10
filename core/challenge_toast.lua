@@ -77,7 +77,7 @@ local function GetOrCreateChallengeToastFrame()
 
     local unlocked = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     unlocked:SetPoint("TOP", f, "TOP", 7, -26)
-    unlocked:SetText(_G.ACHIEVEMENT_UNLOCKED or "Challenge complete!")
+    unlocked:SetText("Challenge complete!")
     f.unlocked = unlocked
 
     local shield = CreateFrame("Frame", nil, f)

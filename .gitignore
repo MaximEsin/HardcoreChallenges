@@ -1,2 +1,5 @@
 # Release artifacts (build with scripts/make-release-zip.sh; upload to CurseForge manually)
 HardcoreChallenges-*-release.zip
+
+# Claude AI reference spec (local only)
+CLAUDE_SPEC.md

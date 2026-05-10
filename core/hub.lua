@@ -60,6 +60,11 @@ function addon:HubTryAddCompletion(key)
     local hub = self:HubEnsure()
     if hub.completedKeys[key] then return false end
     hub.completedKeys[key] = true
+    -- Both Crafted Lock variants share one hub slot; completing either marks both.
+    if key == "CraftedLockedSolo" or key == "CraftedLockedDuo" then
+        hub.completedKeys["CraftedLockedSolo"] = true
+        hub.completedKeys["CraftedLockedDuo"] = true
+    end
     if self.EnqueueChallengeCompletionToast then
         self:EnqueueChallengeCompletionToast(key)
     end
@@ -83,7 +88,8 @@ function addon:HubGetTotalPoints()
     local total = 0
     for k in pairs(hub.completedKeys) do
         local c = self.Challenges[k]
-        if c and c.points then
+        -- CraftedLockedDuo is always cross-marked with Solo; count points only once via Solo.
+        if c and c.points and k ~= "CraftedLockedDuo" then
             total = total + c.points
         end
     end
@@ -153,6 +159,12 @@ function addon:ProcessHubSlayerFromProgress()
 end
 
 function addon:SyncAccountHubFromCharacter()
+    -- Migrate existing saves: if either Crafted Lock variant is in hub, mark both.
+    local hub = self:HubEnsure()
+    if hub.completedKeys["CraftedLockedSolo"] or hub.completedKeys["CraftedLockedDuo"] then
+        hub.completedKeys["CraftedLockedSolo"] = true
+        hub.completedKeys["CraftedLockedDuo"] = true
+    end
     self:ProcessHubLevel60Completions()
     self:ProcessHubSlayerFromProgress()
     self:HubSyncMetaChallenge()

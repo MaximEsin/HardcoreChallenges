@@ -40,7 +40,8 @@ local UnitIsUnitSafe = _G.UnitIsUnit
 local function SortedHubKeysExcludingMeta(hubKeys)
     local keys = {}
     for k in pairs(hubKeys or {}) do
-        if addon.Challenges[k] and k ~= META_KEY then
+        -- CraftedLockedDuo is always cross-marked with Solo; show only Solo as the canonical entry.
+        if addon.Challenges[k] and k ~= META_KEY and k ~= "CraftedLockedDuo" then
             keys[#keys + 1] = k
         end
     end

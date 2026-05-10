@@ -29,6 +29,7 @@ function UI:ShowRunStats()
     if self.runStatsWindow then
         self.runStatsWindow._applyStats()
         self.runStatsWindow:Show()
+        self.runStatsWindow:Raise()
         self.runStatsWindow:RefreshTheme()
         return
     end
@@ -38,7 +39,7 @@ function UI:ShowRunStats()
         name = frameName,
         title = "Run statistics",
         width = 360,
-        height = 220,
+        height = 300,
     })
     _G[frameName] = root
     tinsert(UISpecialFrames, frameName)
@@ -93,4 +94,5 @@ function UI:ShowRunStats()
     root._applyStats()
     self.runStatsWindow = root
     root:Show()
+    root:Raise()
 end

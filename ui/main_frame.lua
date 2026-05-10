@@ -20,6 +20,7 @@ function UI:ShowSelection()
 
     if self.selectionWindow then
         self.selectionWindow:Show()
+        self.selectionWindow:Raise()
         self.selectionWindow:RefreshTheme()
         local content = self.selectionWindow._content
         if content then
@@ -311,4 +312,6 @@ function UI:ShowSelection()
     end)
 
     self.selectionWindow = root
+    root:Show()
+    root:Raise()
 end

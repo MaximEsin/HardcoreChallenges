@@ -75,6 +75,7 @@ function UI:ShowHub()
     if self.hubWindow then
         self:RefreshHub()
         self.hubWindow:Show()
+        self.hubWindow:Raise()
         self.hubWindow:RefreshTheme()
         return
     end
@@ -313,4 +314,6 @@ function UI:ShowHub()
     refreshHubViewLabel()
 
     self.hubWindow = root
+    root:Show()
+    root:Raise()
 end

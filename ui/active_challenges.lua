@@ -170,6 +170,7 @@ function UI:ShowActive()
         title = "Active Challenges",
         width = 468,
         height = 508,
+        frameLevel = 5,
     })
 
     _G[frameName] = root
@@ -635,6 +636,7 @@ function UI:ShowActive()
     refreshViewModeLabel()
 
     self.activeWindow = root
+    root:Show()
 end
 
 function UI:UpdateActive()

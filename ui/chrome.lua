@@ -147,12 +147,13 @@ function UI:CreateThemedWindow(opts)
     local height = opts.height or 480
     local logoTexture = opts.logoTexture or "Interface\\Icons\\ability_creature_cursed_02"
 
+    local baseLevel = opts.frameLevel or 20
     local backdropTemplate = BackdropTemplateMixin and "BackdropTemplate" or nil
     local root = CreateFrame("Frame", name, UIParent, backdropTemplate)
     root:SetSize(width, height)
     root:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     root:SetFrameStrata("DIALOG")
-    root:SetFrameLevel(20)
+    root:SetFrameLevel(baseLevel)
     root:SetClampedToScreen(true)
     root:SetMovable(true)
     root:EnableMouse(true)

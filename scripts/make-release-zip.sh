@@ -21,6 +21,7 @@ rsync -a \
   --exclude='.cursor' \
   --exclude='.agent-transcripts' \
   --exclude='._*' \
+  --exclude='CLAUDE_SPEC.md' \
   --exclude='scripts' \
   "$ADDON_ROOT/" "$STAGE/$NAME/"
 

@@ -1,7 +1,7 @@
 ## Interface: 11403, 11404, 11500, 11501, 11502, 11503, 11504, 11505, 11506, 11507, 11508, 11509
 ## Title: Hardcore Challenges
 ## Notes: Challenges for WoW Classic
-## Version: 1.6.0
+## Version: 1.6.1
 ## Author: aragain
 ## SavedVariables: HardcoreChallengesDB, HardcoreChallengesHubDB
 
